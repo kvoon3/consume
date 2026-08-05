@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .bg { fill: #171717 }
+    .book { fill: #fafafa }
+    .line { stroke: #171717 }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #fafafa }
+      .book { fill: #171717 }
+      .line { stroke: #fafafa }
+    }
+  </style>
+  <rect class="bg" width="32" height="32" rx="8" />
+  <rect class="book" x="6" y="8" width="5" height="17" rx="1" />
+  <rect class="book" x="12.5" y="6" width="6" height="19" rx="1" />
+  <path class="book" d="m20 8 5-1 3 17-5 1z" />
+  <path class="line" d="M7 21.5h3m4-12h3m5.5 11.5 4-.8" stroke-width="1.5" />
+</svg>
