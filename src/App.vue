@@ -29,14 +29,14 @@ const rootRef = useSuperHover({
 </script>
 
 <template>
-  <div class="min-h-screen bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
-    <main class="mx-auto max-w-3xl px-6 py-16">
-      <header class="mb-12 flex items-start justify-between">
-        <h1 class="text-2xl font-semibold tracking-tight">
+  <div class="min-h-screen bg-white text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
+    <main class="mx-auto max-w-2xl px-6 py-20 sm:py-28">
+      <header class="mb-10 flex items-baseline justify-between">
+        <h1 class="text-xl font-medium tracking-tight">
           Kevin Kwong is watching…
         </h1>
         <button
-          class="rounded-full p-2 text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
+          class="p-1 text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
           :title="`Theme: ${theme}`"
           @click="cycle"
         >
@@ -51,9 +51,9 @@ const rootRef = useSuperHover({
         {{ error }}
       </p>
 
-      <div v-else class="flex items-start gap-12">
+      <div v-else class="flex items-start gap-10">
         <div ref="rootRef" class="min-w-0 flex-1">
-          <ul>
+          <ul class="divide-y divide-neutral-100 border-y border-neutral-100 dark:divide-neutral-900 dark:border-neutral-900">
             <li v-for="(a, i) in watching" :key="a.id">
               <a
                 :href="a.url"
@@ -61,9 +61,9 @@ const rootRef = useSuperHover({
                 rel="noopener"
                 data-super-hover
                 :data-index="i"
-                class="group flex items-baseline justify-between gap-4 rounded-md px-3 py-2.5 transition-colors data-[super-hover-active]:bg-neutral-200/60 dark:data-[super-hover-active]:bg-neutral-800/60"
+                class="-mx-3 flex items-baseline justify-between gap-4 px-3 py-3 transition-colors data-[super-hover-active]:bg-neutral-100/70 dark:data-[super-hover-active]:bg-neutral-900/70"
               >
-                <span class="truncate text-sm">
+                <span class="truncate text-[15px]">
                   {{ a.title }}
                 </span>
                 <span class="shrink-0 font-mono text-xs tabular-nums text-neutral-400">
@@ -74,10 +74,10 @@ const rootRef = useSuperHover({
           </ul>
 
           <template v-if="completed.length">
-            <h2 class="mt-10 mb-1 px-3 text-xs font-medium tracking-widest text-neutral-400 uppercase">
+            <h2 class="mt-12 mb-3 text-xs font-medium tracking-widest text-neutral-400 uppercase">
               Recently completed
             </h2>
-            <ul>
+            <ul class="divide-y divide-neutral-100 border-y border-neutral-100 dark:divide-neutral-900 dark:border-neutral-900">
               <li v-for="(a, j) in completed" :key="a.id">
                 <a
                   :href="a.url"
@@ -85,13 +85,13 @@ const rootRef = useSuperHover({
                   rel="noopener"
                   data-super-hover
                   :data-index="watching.length + j"
-                  class="flex items-baseline justify-between gap-4 rounded-md px-3 py-2.5 transition-colors data-[super-hover-active]:bg-neutral-200/60 dark:data-[super-hover-active]:bg-neutral-800/60"
+                  class="-mx-3 flex items-baseline justify-between gap-4 px-3 py-3 transition-colors data-[super-hover-active]:bg-neutral-100/70 dark:data-[super-hover-active]:bg-neutral-900/70"
                 >
-                  <span class="truncate text-sm text-neutral-600 dark:text-neutral-400">
+                  <span class="truncate text-[15px] text-neutral-500 dark:text-neutral-400">
                     {{ a.title }}
                   </span>
-                  <span v-if="a.score" class="shrink-0 text-xs text-amber-500">
-                    <span class="i-ph:star-fill inline-block" /> {{ a.score }}
+                  <span v-if="a.score" class="flex shrink-0 items-center gap-1 font-mono text-xs tabular-nums text-amber-500">
+                    <span class="i-ph:star-fill" /> {{ a.score }}
                   </span>
                 </a>
               </li>
@@ -99,17 +99,33 @@ const rootRef = useSuperHover({
           </template>
         </div>
 
-        <div class="sticky top-16 hidden w-44 shrink-0 sm:block">
+        <div class="sticky top-24 hidden w-40 shrink-0 sm:block">
           <img
             v-if="active"
             :key="active.id"
             :src="active.cover"
             :alt="active.title"
-            class="w-full rounded-lg shadow-lg"
+            class="w-full animate-fade-in rounded-lg shadow-xl ring-1 ring-black/10 dark:ring-white/10"
           >
-          <div v-else class="aspect-[2/3] w-full rounded-lg bg-neutral-200/60 dark:bg-neutral-800/60" />
+          <div v-else class="aspect-[2/3] w-full rounded-lg bg-neutral-100 dark:bg-neutral-900" />
         </div>
       </div>
+
+      <footer class="mt-16 text-xs text-neutral-400">
+        <a href="https://bgm.tv/user/1140496" target="_blank" rel="noopener" class="transition-colors hover:text-neutral-600 dark:hover:text-neutral-300">bgm.tv</a>
+      </footer>
     </main>
   </div>
 </template>
+
+<style>
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.animate-fade-in {
+  animation: fade-in 0.25s ease-out;
+}
+</style>
