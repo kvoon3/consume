@@ -51,6 +51,25 @@ watch(items, (list) => {
 
 const trail = ref<{ h: number, section: keyof Collections, y: number }>()
 
+// rAF lerp toward target row: fast sweeps trail, stops snap tight — no fixed-duration CSS transition
+let targetY = 0
+let rafId = 0
+function startLerp() {
+  if (rafId)
+    return
+  const tick = () => {
+    const t = trail.value
+    if (!t) {
+      rafId = 0
+      return
+    }
+    const next = t.y + (targetY - t.y) * 0.35
+    t.y = Math.abs(targetY - next) < 0.5 ? targetY : next
+    rafId = requestAnimationFrame(tick)
+  }
+  rafId = requestAnimationFrame(tick)
+}
+
 const rootRef = useSuperHover({
   onEnter(event) {
     const el = event.detail.current as HTMLElement | null
@@ -59,8 +78,15 @@ const rootRef = useSuperHover({
     const idx = Number(el.dataset.index)
     active.value = items.value[idx]
     const section = sections.value.find(s => idx >= s.offset && idx < s.offset + s.list.length)
-    if (section)
-      trail.value = { h: el.offsetHeight, section: section.key, y: el.offsetTop }
+    if (!section)
+      return
+    targetY = el.offsetTop
+    if (trail.value?.section === section.key) {
+      startLerp()
+    } else {
+      // jumped lists: snap instantly, no cross-list ghost
+      trail.value = { h: el.offsetHeight, section: section.key, y: targetY }
+    }
   },
   onLeave() {
     trail.value = undefined
@@ -109,7 +135,7 @@ function sublabel(a: AnimeItem) {
             <div class="relative flex max-h-72 flex-col gap-0.5 overflow-y-auto overscroll-contain p-1.5">
               <div
                 v-if="trail?.section === s.key"
-                class="pointer-events-none absolute right-1.5 left-1.5 rounded-md bg-neutral-100 transition-all duration-200 ease-out dark:bg-neutral-900"
+                class="pointer-events-none absolute right-1.5 left-1.5 rounded-md bg-neutral-100 dark:bg-neutral-900"
                 :style="{ transform: `translateY(${trail.y}px)`, height: `${trail.h}px` }"
               />
               <a
