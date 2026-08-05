@@ -18,12 +18,15 @@ const themeIcons = {
 
 const items = computed(() => [...watching.value, ...completed.value])
 const active = ref<AnimeItem>()
+const activeY = ref(0)
 
 const rootRef = useSuperHover({
   onEnter(event) {
-    const el = event.detail.current
-    if (el)
-      active.value = items.value[Number((el as HTMLElement).dataset.index)]
+    const el = event.detail.current as HTMLElement | null
+    if (el) {
+      active.value = items.value[Number(el.dataset.index)]
+      activeY.value = el.offsetTop
+    }
   },
 })
 </script>
@@ -51,7 +54,7 @@ const rootRef = useSuperHover({
         {{ error }}
       </p>
 
-      <div v-else class="flex items-start gap-10">
+      <div v-else class="relative flex items-start gap-10">
         <div ref="rootRef" class="min-w-0 flex-1">
           <ul class="divide-y divide-neutral-100 border-y border-neutral-100 dark:divide-neutral-900 dark:border-neutral-900">
             <li v-for="(a, i) in watching" :key="a.id">
@@ -99,7 +102,10 @@ const rootRef = useSuperHover({
           </template>
         </div>
 
-        <div class="sticky top-24 hidden w-40 shrink-0 sm:block">
+        <div
+          class="absolute top-0 right-0 hidden w-40 transition-transform duration-300 ease-out sm:block"
+          :style="{ transform: `translateY(${activeY}px)` }"
+        >
           <img
             v-if="active"
             :key="active.id"
