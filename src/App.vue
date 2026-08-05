@@ -1,4 +1,5 @@
 <script setup lang="ts" vapor>
+import { defineSound } from '@web-kits/audio'
 import { Monitor, Moon, Star, Sun } from 'lucide'
 import { MorphIcon } from 'morphicons/vue'
 import { computed, ref, watch } from 'vue'
@@ -11,6 +12,12 @@ import { useTheme } from './composables/useTheme'
 
 const { collections, error, loading } = useBangumi()
 const { cycle, theme } = useTheme()
+
+const hoverSound = defineSound({
+  source: { type: 'sine', frequency: { start: 700, end: 500 } },
+  envelope: { decay: 0.035 },
+  gain: 0.06,
+})
 
 const themeIcons = {
   dark: Moon,
@@ -80,6 +87,7 @@ const rootRef = useSuperHover({
     if (!el)
       return
     const idx = Number(el.dataset.index)
+    hoverSound()
     active.value = items.value[idx]
     const section = sections.value.find(s => idx >= s.offset && idx < s.offset + s.list.length)
     if (!section)
