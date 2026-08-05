@@ -20,6 +20,7 @@
     "@types/node": "^26.1.2",
     "@vitejs/plugin-vue": "^6.0.0",
     "bumpp": "^10.0.0",
+    "oxlint-tsgolint": "^7.0.2001",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0",
     "unocss": "^66.0.0",
