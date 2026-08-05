@@ -34,7 +34,7 @@ async function fetchCategory(type: number) {
     {
       headers: {
         'Authorization': `Bearer ${process.env.BANGUMI_TOKEN}`,
-        'User-Agent': 'kvoon/ani-showcase',
+        'User-Agent': 'kvoon3/watch (https://github.com/kvoon3/watch)',
       },
     },
   )

@@ -3,9 +3,14 @@ catalog:
   vite-plus: 0.2.4
 overrides:
   vite: 'catalog:'
+minimumReleaseAgeExclude:
+  - morphicons@1.4.1
 peerDependencyRules:
   allowAny:
     - vite
   allowedVersions:
     vite: '*'
 packages: []
+allowBuilds:
+  esbuild: true
+  workerd: true
