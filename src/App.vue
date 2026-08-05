@@ -64,7 +64,7 @@ function startLerp() {
       rafId = 0
       return
     }
-    const next = t.y + (targetY - t.y) * 0.18
+    const next = t.y + (targetY - t.y) * 0.4
     t.y = Math.abs(targetY - next) < 0.5 ? targetY : next
     rafId = requestAnimationFrame(tick)
   }
