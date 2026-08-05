@@ -3,6 +3,9 @@ import unocss from 'unocss/vite'
 import { defineConfig } from 'vite-plus'
 
 export default defineConfig({
+  staged: {
+    '*.{js,ts,vue}': 'vp lint --fix',
+  },
   plugins: [
     vue(),
     unocss(),
