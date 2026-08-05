@@ -23,6 +23,7 @@ interface CollectionEntry {
     name_cn: string
     score: number
     short_summary: string
+    tags?: { name: string }[]
   }
   updated_at: string
 }
@@ -48,6 +49,7 @@ async function fetchCategory(type: number) {
     score: e.rate,
     siteScore: e.subject.score,
     summary: e.subject.short_summary,
+    tags: e.subject.tags?.slice(0, 3).map(t => t.name) ?? [],
     title: e.subject.name_cn || e.subject.name,
     total: e.subject.eps,
     updatedAt: e.updated_at,

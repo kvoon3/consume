@@ -86,16 +86,17 @@ function sublabel(a: AnimeItem) {
         {{ error }}
       </p>
 
-      <div
-        v-else
-        class="flex h-[min(30rem,70vh)] overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800"
-      >
-        <div ref="rootRef" class="w-44 shrink-0 overflow-y-auto overscroll-contain sm:w-56">
-          <template v-for="s in sections" :key="s.key">
-            <h3 class="sticky top-0 z-10 bg-white/90 px-3 pt-3 pb-1 text-[11px] font-medium tracking-widest text-neutral-400 backdrop-blur-sm dark:bg-neutral-950/90">
+      <div v-else ref="rootRef" class="flex items-start gap-6">
+        <div class="w-44 shrink-0 space-y-6 sm:w-56">
+          <section
+            v-for="s in sections"
+            :key="s.key"
+            class="overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800"
+          >
+            <h3 class="border-b border-neutral-200 bg-neutral-50 px-3 py-2 text-[11px] font-medium tracking-widest text-neutral-400 dark:border-neutral-800 dark:bg-neutral-900">
               {{ s.label }} {{ s.list.length }}
             </h3>
-            <div class="flex flex-col gap-0.5 px-1.5 pb-1.5">
+            <div class="flex max-h-72 flex-col gap-0.5 overflow-y-auto overscroll-contain p-1.5">
               <a
                 v-for="(a, i) in s.list"
                 :key="a.id"
@@ -104,23 +105,26 @@ function sublabel(a: AnimeItem) {
                 rel="noopener"
                 data-super-hover
                 :data-index="s.offset + i"
-                class="rounded-md px-2 py-1.5 outline-none transition-colors data-[super-hover-active]:bg-neutral-100 dark:data-[super-hover-active]:bg-neutral-900"
+                class="rounded-md px-2 py-1.5 outline-none data-[super-hover-active]:bg-neutral-100 dark:data-[super-hover-active]:bg-neutral-900"
               >
-                <div class="truncate text-sm">
-                  {{ a.title }}
+                <div class="flex items-baseline justify-between gap-2">
+                  <span class="truncate text-sm">{{ a.title }}</span>
+                  <span v-if="a.score" class="shrink-0 text-[11px] text-amber-500 tabular-nums">
+                    ★{{ a.score }}
+                  </span>
                 </div>
                 <div class="truncate text-[11px] text-neutral-400 tabular-nums">
                   {{ sublabel(a) }}
                 </div>
               </a>
             </div>
-          </template>
+          </section>
         </div>
 
-        <div class="relative min-w-0 flex-1 border-l border-neutral-200 dark:border-neutral-800">
-          <div v-if="active" :key="active.id" class="absolute inset-0 flex flex-col overflow-hidden">
-            <div class="flex items-start justify-between gap-3 px-4 pt-4 pb-2">
-              <h2 class="min-w-0 truncate text-lg leading-tight font-medium sm:text-xl">
+        <div class="sticky top-24 min-w-0 flex-1 rounded-xl border border-neutral-200 dark:border-neutral-800">
+          <div v-if="active" class="flex max-h-[70vh] flex-col overflow-hidden">
+            <div class="flex items-start justify-between gap-3 border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
+              <h2 class="min-w-0 truncate text-lg leading-tight font-medium">
                 {{ active.title }}
               </h2>
               <span class="shrink-0 rounded-full px-2 py-0.5 text-xs text-neutral-500 tabular-nums dark:text-neutral-400">
@@ -128,7 +132,7 @@ function sublabel(a: AnimeItem) {
               </span>
             </div>
 
-            <div class="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+            <div class="min-h-0 flex-1 overflow-y-auto px-4 py-4">
               <img
                 :src="active.cover"
                 :alt="active.title"
@@ -139,7 +143,7 @@ function sublabel(a: AnimeItem) {
                   score
                 </dt>
                 <dd class="tabular-nums">
-                  <span v-if="active.score" class="text-amber-500"><span class="i-ph:star-fill" /> {{ active.score }}</span>
+                  <span v-if="active.score" class="text-amber-500">★ {{ active.score }}</span>
                   <span class="text-neutral-400"> · bgm {{ active.siteScore || '—' }}</span>
                 </dd>
                 <dt class="text-neutral-400">
@@ -148,6 +152,14 @@ function sublabel(a: AnimeItem) {
                 <dd class="tabular-nums">
                   {{ active.date || '—' }}
                 </dd>
+                <template v-if="active.tags.length">
+                  <dt class="text-neutral-400">
+                    tags
+                  </dt>
+                  <dd class="text-neutral-500 dark:text-neutral-400">
+                    {{ active.tags.join(' · ') }}
+                  </dd>
+                </template>
               </dl>
               <p class="text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
                 {{ active.summary }}
