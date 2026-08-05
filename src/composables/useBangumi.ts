@@ -2,9 +2,12 @@ import { onMounted, ref } from 'vue'
 
 export interface AnimeItem {
   cover: string
+  date: string
   id: number
   progress: number
   score: number
+  siteScore: number
+  summary: string
   title: string
   total: number
   updatedAt: string
@@ -15,11 +18,14 @@ interface CollectionEntry {
   ep_status: number
   rate: number
   subject: {
+    date: string
     eps: number
     id: number
     images: { common: string }
     name: string
     name_cn: string
+    score: number
+    short_summary: string
   }
   updated_at: string
 }
@@ -65,9 +71,12 @@ async function fetchCollections(type: number, limit: number): Promise<AnimeItem[
   const json = await res.json() as { data: CollectionEntry[] }
   return json.data.map(e => ({
     cover: e.subject.images.common,
+    date: e.subject.date,
     id: e.subject.id,
     progress: e.ep_status,
     score: e.rate,
+    siteScore: e.subject.score,
+    summary: e.subject.short_summary,
     title: e.subject.name_cn || e.subject.name,
     total: e.subject.eps,
     updatedAt: e.updated_at,

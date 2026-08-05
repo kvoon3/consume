@@ -1,5 +1,5 @@
 <script setup lang="ts" vapor>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useSuperHover } from 'super-hover/vue'
 
 import type { AnimeItem } from './composables/useBangumi'
@@ -18,22 +18,26 @@ const themeIcons = {
 
 const items = computed(() => [...watching.value, ...completed.value])
 const active = ref<AnimeItem>()
-const activeY = ref(0)
+
+watch(items, list => active.value ??= list[0])
 
 const rootRef = useSuperHover({
   onEnter(event) {
     const el = event.detail.current as HTMLElement | null
-    if (el) {
+    if (el)
       active.value = items.value[Number(el.dataset.index)]
-      activeY.value = el.offsetTop
-    }
   },
 })
+
+function sublabel(a: AnimeItem) {
+  const progress = a.total ? `${a.progress}/${a.total}` : `${a.progress} eps`
+  return a.date ? `${a.date.slice(0, 4)} · ${progress}` : progress
+}
 </script>
 
 <template>
   <div class="min-h-screen bg-white text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
-    <main class="mx-auto max-w-2xl px-6 py-20 sm:py-28">
+    <main class="mx-auto max-w-3xl px-6 py-20 sm:py-28">
       <header class="mb-10 flex items-baseline justify-between">
         <h1 class="text-xl font-medium tracking-tight">
           Kevin Kwong is watching…
@@ -54,66 +58,69 @@ const rootRef = useSuperHover({
         {{ error }}
       </p>
 
-      <div v-else class="relative flex items-start gap-10">
-        <div ref="rootRef" class="min-w-0 flex-1">
-          <ul class="divide-y divide-neutral-100 border-y border-neutral-100 dark:divide-neutral-900 dark:border-neutral-900">
-            <li v-for="(a, i) in watching" :key="a.id">
-              <a
-                :href="a.url"
-                target="_blank"
-                rel="noopener"
-                data-super-hover
-                :data-index="i"
-                class="-mx-3 flex items-baseline justify-between gap-4 px-3 py-3 transition-colors data-[super-hover-active]:bg-neutral-100/70 dark:data-[super-hover-active]:bg-neutral-900/70"
-              >
-                <span class="truncate text-[15px]">
-                  {{ a.title }}
-                </span>
-                <span class="shrink-0 font-mono text-xs tabular-nums text-neutral-400">
-                  {{ a.progress }}{{ a.total ? `/${a.total}` : '' }}
-                </span>
-              </a>
-            </li>
-          </ul>
-
-          <template v-if="completed.length">
-            <h2 class="mt-12 mb-3 text-xs font-medium tracking-widest text-neutral-400 uppercase">
-              Recently completed
-            </h2>
-            <ul class="divide-y divide-neutral-100 border-y border-neutral-100 dark:divide-neutral-900 dark:border-neutral-900">
-              <li v-for="(a, j) in completed" :key="a.id">
-                <a
-                  :href="a.url"
-                  target="_blank"
-                  rel="noopener"
-                  data-super-hover
-                  :data-index="watching.length + j"
-                  class="-mx-3 flex items-baseline justify-between gap-4 px-3 py-3 transition-colors data-[super-hover-active]:bg-neutral-100/70 dark:data-[super-hover-active]:bg-neutral-900/70"
-                >
-                  <span class="truncate text-[15px] text-neutral-500 dark:text-neutral-400">
-                    {{ a.title }}
-                  </span>
-                  <span v-if="a.score" class="flex shrink-0 items-center gap-1 font-mono text-xs tabular-nums text-amber-500">
-                    <span class="i-ph:star-fill" /> {{ a.score }}
-                  </span>
-                </a>
-              </li>
-            </ul>
-          </template>
+      <div
+        v-else
+        class="flex h-[min(30rem,70vh)] overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800"
+      >
+        <div ref="rootRef" class="w-44 shrink-0 overflow-y-auto overscroll-contain sm:w-56">
+          <div class="flex flex-col gap-0.5 p-1.5">
+            <a
+              v-for="(a, i) in items"
+              :key="a.id"
+              :href="a.url"
+              target="_blank"
+              rel="noopener"
+              data-super-hover
+              :data-index="i"
+              class="rounded-md px-2 py-1.5 outline-none transition-colors data-[super-hover-active]:bg-neutral-100 dark:data-[super-hover-active]:bg-neutral-900"
+            >
+              <div class="truncate text-sm">
+                {{ a.title }}
+              </div>
+              <div class="truncate text-[11px] text-neutral-400 tabular-nums">
+                {{ sublabel(a) }}
+              </div>
+            </a>
+          </div>
         </div>
 
-        <div
-          class="absolute top-0 right-0 hidden w-40 transition-transform duration-300 ease-out sm:block"
-          :style="{ transform: `translateY(${activeY}px)` }"
-        >
-          <img
-            v-if="active"
-            :key="active.id"
-            :src="active.cover"
-            :alt="active.title"
-            class="w-full animate-fade-in rounded-lg shadow-xl ring-1 ring-black/10 dark:ring-white/10"
-          >
-          <div v-else class="aspect-[2/3] w-full rounded-lg bg-neutral-100 dark:bg-neutral-900" />
+        <div class="relative min-w-0 flex-1 border-l border-neutral-200 dark:border-neutral-800">
+          <div v-if="active" :key="active.id" class="absolute inset-0 flex animate-fade-in flex-col overflow-hidden">
+            <div class="flex items-start justify-between gap-3 px-4 pt-4 pb-2">
+              <h2 class="min-w-0 truncate text-lg leading-tight font-medium sm:text-xl">
+                {{ active.title }}
+              </h2>
+              <span class="shrink-0 rounded-full px-2 py-0.5 text-xs text-neutral-500 tabular-nums dark:text-neutral-400">
+                {{ active.total ? `${active.progress} / ${active.total}` : `${active.progress} eps` }}
+              </span>
+            </div>
+
+            <div class="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+              <img
+                :src="active.cover"
+                :alt="active.title"
+                class="mb-4 w-32 rounded-lg shadow-md ring-1 ring-black/10 sm:w-36 dark:ring-white/10"
+              >
+              <dl class="mb-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
+                <dt class="text-neutral-400">
+                  score
+                </dt>
+                <dd class="tabular-nums">
+                  <span v-if="active.score" class="text-amber-500"><span class="i-ph:star-fill" /> {{ active.score }}</span>
+                  <span class="text-neutral-400"> · bgm {{ active.siteScore || '—' }}</span>
+                </dd>
+                <dt class="text-neutral-400">
+                  aired
+                </dt>
+                <dd class="tabular-nums">
+                  {{ active.date || '—' }}
+                </dd>
+              </dl>
+              <p class="text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
+                {{ active.summary }}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -128,10 +135,9 @@ const rootRef = useSuperHover({
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
   }
 }
 .animate-fade-in {
-  animation: fade-in 0.25s ease-out;
+  animation: fade-in 0.2s ease-out;
 }
 </style>
