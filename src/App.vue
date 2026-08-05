@@ -106,8 +106,10 @@ function sublabel(a: AnimeItem) {
             alt="Kevin Kwong"
             class="size-10 rounded-full ring-1 ring-black/10 dark:ring-white/10"
           >
-          <h1 class="text-xl font-medium tracking-tight">
-            Kevin Kwong is watching…
+          <h1 class="text-xl font-medium tracking-tight" aria-label="Kevin Kwong is watching…">
+            <span class="title-word" aria-hidden="true">Kevin Kwong</span>
+            <span class="title-word ml-1" aria-hidden="true">is</span>
+            <span class="title-word ml-1" aria-hidden="true">watching<span class="title-dot">.</span><span class="title-dot">.</span><span class="title-dot">.</span></span>
           </h1>
         </div>
         <button
@@ -200,6 +202,49 @@ function sublabel(a: AnimeItem) {
 </template>
 
 <style scoped>
+.title-word {
+  display: inline-block;
+  animation: title-word-in 240ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.title-word:nth-child(2) {
+  animation-delay: 40ms;
+}
+
+.title-word:nth-child(3) {
+  animation-delay: 80ms;
+}
+
+@keyframes title-word-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.title-dot {
+  display: inline-block;
+  animation: title-dot-pulse 1200ms linear infinite;
+}
+
+.title-dot:nth-child(2) {
+  animation-delay: 200ms;
+}
+
+.title-dot:nth-child(3) {
+  animation-delay: 400ms;
+}
+
+@keyframes title-dot-pulse {
+  0%, 60%, 100% {
+    opacity: 0.3;
+  }
+
+  30% {
+    opacity: 1;
+  }
+}
+
 .list-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 13rem 4rem 4.5rem 3rem;
@@ -221,8 +266,23 @@ function sublabel(a: AnimeItem) {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .title-word {
+    animation: title-word-fade-in 160ms ease both;
+  }
+
+  .title-dot {
+    animation: none;
+    opacity: 1;
+  }
+
   .collection-list {
     scroll-behavior: auto;
+  }
+}
+
+@keyframes title-word-fade-in {
+  from {
+    opacity: 0;
   }
 }
 
