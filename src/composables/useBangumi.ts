@@ -20,13 +20,7 @@ export interface Collections {
   wish: AnimeItem[]
 }
 
-export const CATEGORY_LABELS: Record<keyof Collections, string> = {
-  watching: '在看',
-  wish: '想看',
-  completed: '看过',
-  onHold: '搁置',
-  dropped: '抛弃',
-}
+export const CATEGORY_KEYS = ['watching', 'wish', 'completed', 'onHold', 'dropped'] as const
 
 export function useBangumi() {
   const collections = ref<Collections>()

@@ -71,7 +71,7 @@ export default defineCachedHandler(async () => {
           progress: entry.ep_status,
           score: entry.rate,
           tags: entry.subject.tags?.map(tag => tag.name) ?? [],
-          title: entry.subject.name_cn || entry.subject.name,
+          title: entry.subject.name,
           total: entry.subject.eps,
           url: `https://bgm.tv/subject/${entry.subject.id}`,
         })),

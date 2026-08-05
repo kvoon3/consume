@@ -1,6 +1,6 @@
 <script setup lang="ts" vapor>
 import { defineSound } from '@web-kits/audio'
-import { Library, Monitor, Moon, Sun } from 'lucide'
+import { Languages, Library, Monitor, Moon, Sun } from 'lucide'
 import { MorphIcon } from 'morphicons/vue'
 import { computed, shallowRef, watch } from 'vue'
 import { useSuperHover } from 'super-hover/vue'
@@ -9,10 +9,12 @@ import type { AnimeItem, Collections } from './composables/useBangumi'
 
 import CoverBackdrop from './components/CoverBackdrop.vue'
 import TasteSummary from './components/TasteSummary.vue'
-import { CATEGORY_LABELS, useBangumi } from './composables/useBangumi'
+import { CATEGORY_KEYS, useBangumi } from './composables/useBangumi'
+import { useLocale } from './composables/useLocale'
 import { useTheme } from './composables/useTheme'
 
 const { collections, error, loading } = useBangumi()
+const { locale, t, toggle: toggleLocale } = useLocale()
 const { cycle, isDark, theme } = useTheme()
 
 const hoverSound = defineSound({
@@ -39,8 +41,8 @@ const sections = computed<Section[]>(() => {
   if (!c)
     return []
   let offset = 0
-  return (Object.keys(CATEGORY_LABELS) as (keyof Collections)[])
-    .map(key => ({ key, label: CATEGORY_LABELS[key], list: c[key] }))
+  return CATEGORY_KEYS
+    .map(key => ({ key, label: t.value[key], list: c[key] }))
     .filter(s => s.list.length > 0)
     .map((s) => {
       const withOffset = { ...s, offset }
@@ -98,7 +100,7 @@ function sublabel(a: AnimeItem) {
 </script>
 
 <template>
-  <div class="relative min-h-screen bg-white text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
+  <div class="relative min-h-screen bg-white font-sans text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
     <CoverBackdrop :items="items" :dark="isDark" />
 
     <main class="relative z-10 mx-auto max-w-5xl px-6 py-12 sm:py-16">
@@ -122,6 +124,13 @@ function sublabel(a: AnimeItem) {
           <a href="https://github.com/kvoon3/watch" target="_blank" rel="noopener" aria-label="GitHub" class="transition-colors hover:text-neutral-900 dark:hover:text-neutral-100">
             <svg viewBox="0 0 24 24" class="size-4 fill-current" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" /></svg>
           </a>
+          <button
+            class="p-1 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
+            :title="locale === 'zh' ? '中文' : 'English'"
+            @click="toggleLocale"
+          >
+            <MorphIcon :icon="Languages" :size="18" />
+          </button>
           <button
             class="p-1 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
             :title="`Theme: ${theme}`"
@@ -159,11 +168,11 @@ function sublabel(a: AnimeItem) {
           class="collection-list relative h-[min(60vh,32rem)] min-h-80 overflow-y-auto overscroll-contain rounded-xl border border-neutral-200 dark:border-neutral-800"
         >
           <div class="list-grid sticky top-0 z-20 border-b border-neutral-200 bg-white/95 px-3 py-1.5 text-[10px] tracking-widest text-neutral-400 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
-            <span>title</span>
+            <span>{{ t.title }}</span>
             <span class="preview-column" />
-            <span class="detail-column">aired</span>
-            <span class="detail-column">progress</span>
-            <span class="text-right">rating</span>
+            <span class="detail-column">{{ t.aired }}</span>
+            <span class="detail-column">{{ t.progress }}</span>
+            <span class="text-right">{{ t.rating }}</span>
           </div>
 
           <section v-for="s in sections" :id="`collection-${s.key}`" :key="s.key">
@@ -185,7 +194,7 @@ function sublabel(a: AnimeItem) {
               <span class="truncate text-sm">{{ a.title }}</span>
               <span class="preview-column" />
               <span class="detail-column text-neutral-400 tabular-nums">{{ sublabel(a) }}</span>
-              <span class="detail-column text-neutral-400 tabular-nums">{{ a.total ? `${a.progress}/${a.total}` : `${a.progress} eps` }}</span>
+              <span class="detail-column text-neutral-400 tabular-nums">{{ a.total ? `${a.progress}/${a.total}` : `${a.progress} ${t.eps}` }}</span>
               <span class="text-right text-amber-500 tabular-nums">{{ a.score || '—' }}</span>
             </a>
           </section>

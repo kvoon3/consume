@@ -3,9 +3,13 @@ import { computed } from 'vue'
 
 import type { AnimeItem } from '../composables/useBangumi'
 
+import { useLocale } from '../composables/useLocale'
+
 const props = defineProps<{
   items: AnimeItem[]
 }>()
+
+const { t } = useLocale()
 
 const ignoredTags = new Set(['Anime', 'TV', '动画', '日本', '神作'])
 const tagAliases: Record<string, string> = { 漫改: '漫画改' }
@@ -53,14 +57,14 @@ const maxTag = computed(() => Math.max(...tags.value.map(item => item.count), 1)
 <template>
   <details class="group mb-5 rounded-xl border border-neutral-200 dark:border-neutral-800">
     <summary class="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-xs font-medium tracking-widest text-neutral-500 dark:text-neutral-400">
-      <span>TASTE · {{ items.length }} TITLES</span>
+      <span>{{ t.taste }} · {{ items.length }} {{ t.titles }}</span>
       <span class="text-neutral-300 transition-transform group-open:rotate-45 dark:text-neutral-600">＋</span>
     </summary>
 
     <div class="grid gap-6 border-t border-neutral-200 px-3 py-4 sm:grid-cols-2 dark:border-neutral-800">
       <section>
         <h2 class="mb-3 text-[10px] tracking-widest text-neutral-400">
-          ERA
+          {{ t.era }}
         </h2>
         <div class="space-y-2">
           <div
@@ -80,7 +84,7 @@ const maxTag = computed(() => Math.max(...tags.value.map(item => item.count), 1)
 
       <section>
         <h2 class="mb-3 grid grid-cols-[1fr_2rem_2.5rem] gap-2 text-[10px] tracking-widest text-neutral-400">
-          <span>TOP TAGS</span><span class="text-right">N</span><span class="text-right">AVG</span>
+          <span>{{ t.topTags }}</span><span class="text-right">N</span><span class="text-right">{{ t.avg }}</span>
         </h2>
         <div class="space-y-1.5">
           <div
