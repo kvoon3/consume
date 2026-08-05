@@ -8,6 +8,7 @@ export interface AnimeItem {
   score: number
   tags: string[]
   title: string
+  titleCn: string
   total: number
   url: string
 }

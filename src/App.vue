@@ -94,6 +94,10 @@ function scrollToSection(key: keyof Collections) {
     root.scrollTo({ top: target.offsetTop - header.offsetHeight })
 }
 
+function displayTitle(a: AnimeItem) {
+  return locale.value === 'zh' && a.titleCn ? a.titleCn : a.title
+}
+
 function sublabel(a: AnimeItem) {
   return a.date ? a.date.slice(0, 4) : '—'
 }
@@ -191,7 +195,7 @@ function sublabel(a: AnimeItem) {
               :data-index="s.offset + i"
               class="list-grid border-b border-neutral-100 px-3 py-1 text-xs outline-none transition-colors last:border-b-0 hover:bg-neutral-50 focus-visible:bg-neutral-50 dark:border-neutral-900 dark:hover:bg-neutral-900/60 dark:focus-visible:bg-neutral-900/60"
             >
-              <span class="truncate text-sm">{{ a.title }}</span>
+              <span class="truncate text-sm">{{ displayTitle(a) }}</span>
               <span class="preview-column" />
               <span class="detail-column text-neutral-400 tabular-nums">{{ sublabel(a) }}</span>
               <span class="detail-column text-neutral-400 tabular-nums">{{ a.total ? `${a.progress}/${a.total}` : `${a.progress} ${t.eps}` }}</span>
@@ -204,7 +208,7 @@ function sublabel(a: AnimeItem) {
           <img
             v-if="active"
             :src="active.cover"
-            :alt="active.title"
+            :alt="displayTitle(active)"
             class="preview-card pointer-events-none absolute z-30 hidden h-28 w-20 rounded object-cover shadow-xl ring-1 ring-black/10 sm:block dark:ring-white/10"
             :style="{ transform: `translateY(${previewY}px)` }"
           >
