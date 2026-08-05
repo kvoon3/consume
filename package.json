@@ -12,6 +12,7 @@
     "release": "bumpp"
   },
   "dependencies": {
+    "super-hover": "^0.2.2",
     "vue": "^3.6.0-beta.17"
   },
   "devDependencies": {

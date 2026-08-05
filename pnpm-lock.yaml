@@ -17,6 +17,9 @@ importers:
 
   .:
     dependencies:
+      super-hover:
+        specifier: ^0.2.2
+        version: 0.2.2(vue@3.6.0-rc.2(typescript@5.9.3))
       vue:
         specifier: ^3.6.0-beta.17
         version: 3.6.0-rc.2(typescript@5.9.3)
@@ -1833,6 +1836,17 @@ packages:
   std-env@4.1.0:
     resolution: {integrity: sha512-Rq7ybcX2RuC55r9oaPVEW7/xu3tj8u4GeBYHBWCychFtzMIr86A7e3PPEBPT37sHStKX3+TiX/Fr/ACmJLVlLQ==}
 
+  super-hover@0.2.2:
+    resolution: {integrity: sha512-oqwg/qQIJdN1X519TAjYCIH5WrcFoBn1woMl6CODcwoZ4O5/zjJETin5R9Mk+6pDFiFpWwO7+ejxSUWXsnODAw==}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
+      vue: ^3.4.0
+    peerDependenciesMeta:
+      react:
+        optional: true
+      vue:
+        optional: true
+
   tinybench@2.9.0:
     resolution: {integrity: sha512-0+DUvqWMValLmha6lr4kD8iAMK1HzV0/aKnCtWb9v9641TnP/MFb7Pc2bxoxQjTXAErryXVgUOfv2YqNllqGeg==}
 
@@ -3583,6 +3597,10 @@ snapshots:
   stackback@0.0.2: {}
 
   std-env@4.1.0: {}
+
+  super-hover@0.2.2(vue@3.6.0-rc.2(typescript@5.9.3)):
+    optionalDependencies:
+      vue: 3.6.0-rc.2(typescript@5.9.3)
 
   tinybench@2.9.0: {}
 
