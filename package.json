@@ -17,18 +17,18 @@
     "lucide": "^1.28.0",
     "morphicons": "^1.4.1",
     "super-hover": "^0.2.2",
-    "vue": "^3.6.0-beta.17"
+    "vue": "^3.6.0-rc.2"
   },
   "devDependencies": {
-    "@kvoon/oxlint-config": "^0.1.0",
+    "@kvoon/oxlint-config": "^0.1.2",
     "@types/node": "^26.1.2",
-    "@vitejs/plugin-vue": "^6.0.0",
-    "bumpp": "^10.0.0",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "bumpp": "^12.1.1",
     "nitro": "3.0.260610-beta",
     "oxlint-tsgolint": "^7.0.2001",
-    "tsx": "^4.20.0",
-    "typescript": "^5.9.0",
-    "unocss": "^66.0.0",
+    "tsx": "^4.23.5",
+    "typescript": "^5.9.3",
+    "unocss": "^66.7.5",
     "vite": "catalog:",
     "vite-plus": "catalog:",
     "wrangler": "^4.118.0"
