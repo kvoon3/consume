@@ -41,6 +41,7 @@ async function fetchCategory(type: number) {
   if (!res.ok)
     throw new Error(`Bangumi API ${res.status}`)
   const { data } = await res.json() as { data: CollectionEntry[] }
+  data.sort((a, b) => (b.rate || 0) - (a.rate || 0) || b.updated_at.localeCompare(a.updated_at))
   return data.map(e => ({
     cover: e.subject.images.common,
     date: e.subject.date,
