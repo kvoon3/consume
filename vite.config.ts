@@ -30,6 +30,10 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    // nitro emits the client here; unocss must know or it skips CSS generation
+    outDir: '.output/public',
+  },
   resolve: {
     alias: {
       vue: 'vue/dist/vue.runtime-with-vapor.esm-browser.js',
