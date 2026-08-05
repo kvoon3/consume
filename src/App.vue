@@ -1,4 +1,6 @@
 <script setup lang="ts" vapor>
+import { Monitor, Moon, Star, Sun } from 'lucide'
+import { MorphIcon } from 'morphicons/vue'
 import { computed, ref, watch } from 'vue'
 import { useSuperHover } from 'super-hover/vue'
 
@@ -11,9 +13,9 @@ const { collections, error, loading } = useBangumi()
 const { cycle, theme } = useTheme()
 
 const themeIcons = {
-  dark: 'i-ph:moon',
-  light: 'i-ph:sun',
-  system: 'i-ph:monitor',
+  dark: Moon,
+  light: Sun,
+  system: Monitor,
 }
 
 interface Section {
@@ -64,7 +66,7 @@ function startLerp() {
       rafId = 0
       return
     }
-    const next = scrolling ? targetY : t.y + (targetY - t.y) * 0.65
+    const next = t.y + (targetY - t.y) * 0.75
     t.y = Math.abs(targetY - next) < 0.5 ? targetY : next
     rafId = requestAnimationFrame(tick)
   }
@@ -105,16 +107,23 @@ function sublabel(a: AnimeItem) {
 <template>
   <div class="min-h-screen bg-white text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
     <main class="mx-auto max-w-3xl px-6 py-20 sm:py-28">
-      <header class="mb-10 flex items-baseline justify-between">
-        <h1 class="text-xl font-medium tracking-tight">
-          Kevin Kwong is watching…
-        </h1>
+      <header class="mb-10 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <img
+            src="https://kvoon.me/.netlify/images?q=70&url=%2Favatar_cropped.jpg"
+            alt="Kevin Kwong"
+            class="size-10 rounded-full ring-1 ring-black/10 dark:ring-white/10"
+          >
+          <h1 class="text-xl font-medium tracking-tight">
+            Kevin Kwong is watching…
+          </h1>
+        </div>
         <button
           class="p-1 text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
           :title="`Theme: ${theme}`"
           @click="cycle"
         >
-          <span :class="themeIcons[theme]" class="block" />
+          <MorphIcon :icon="themeIcons[theme]" :size="18" />
         </button>
       </header>
 
@@ -125,7 +134,7 @@ function sublabel(a: AnimeItem) {
         {{ error }}
       </p>
 
-      <div v-else ref="rootRef" class="flex items-start gap-6" @scroll.passive.capture="onListScroll">
+      <div v-else ref="rootRef" class="flex items-start gap-6">
         <div class="w-44 shrink-0 space-y-6 sm:w-56">
           <section
             v-for="s in sections"

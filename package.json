@@ -12,11 +12,12 @@
     "release": "bumpp"
   },
   "dependencies": {
+    "lucide": "^1.28.0",
+    "morphicons": "^1.4.1",
     "super-hover": "^0.2.2",
     "vue": "^3.6.0-beta.17"
   },
   "devDependencies": {
-    "@iconify-json/ph": "^1.2.2",
     "@kvoon/oxlint-config": "^0.1.0",
     "@types/node": "^26.1.2",
     "@vitejs/plugin-vue": "^6.0.0",
