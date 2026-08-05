@@ -7,12 +7,13 @@ import { useSuperHover } from 'super-hover/vue'
 
 import type { AnimeItem, Collections } from './composables/useBangumi'
 
+import CoverBackdrop from './components/CoverBackdrop.vue'
 import TasteSummary from './components/TasteSummary.vue'
 import { CATEGORY_LABELS, useBangumi } from './composables/useBangumi'
 import { useTheme } from './composables/useTheme'
 
 const { collections, error, loading } = useBangumi()
-const { cycle, theme } = useTheme()
+const { cycle, isDark, theme } = useTheme()
 
 const hoverSound = defineSound({
   source: { type: 'sine', frequency: { start: 700, end: 500 } },
@@ -97,8 +98,10 @@ function sublabel(a: AnimeItem) {
 </script>
 
 <template>
-  <div class="min-h-screen bg-white text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
-    <main class="mx-auto max-w-5xl px-6 py-12 sm:py-16">
+  <div class="relative min-h-screen bg-white text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
+    <CoverBackdrop :items="items" :dark="isDark" />
+
+    <main class="relative z-10 mx-auto max-w-5xl px-6 py-12 sm:py-16">
       <header class="mb-8 flex items-center justify-between">
         <div class="flex items-center gap-3">
           <img
