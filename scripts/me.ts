@@ -1,6 +1,6 @@
 // Print my current Bangumi watching list — `pnpm me`
-const token = process.env.VITE_BANGUMI_TOKEN
-  ?? (await import('node:fs')).readFileSync(new URL('../.env', import.meta.url), 'utf8').match(/VITE_BANGUMI_TOKEN=(\S+)/)?.[1]
+const token = process.env.BANGUMI_TOKEN
+  ?? (await import('node:fs')).readFileSync(new URL('../.env', import.meta.url), 'utf8').match(/BANGUMI_TOKEN=(\S+)/)?.[1]
 
 const res = await fetch('https://api.bgm.tv/v0/users/1140496/collections?subject_type=2&type=3&limit=30', {
   headers: { Authorization: `Bearer ${token}`, 'User-Agent': 'kvoon/ani-showcase' },

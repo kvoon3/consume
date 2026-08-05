@@ -2,12 +2,12 @@
 import { computed, ref, watch } from 'vue'
 import { useSuperHover } from 'super-hover/vue'
 
-import type { AnimeItem } from './composables/useBangumi'
+import type { AnimeItem, Collections } from './composables/useBangumi'
 
-import { useBangumi } from './composables/useBangumi'
+import { CATEGORY_LABELS, useBangumi } from './composables/useBangumi'
 import { useTheme } from './composables/useTheme'
 
-const { completed, error, loading, watching } = useBangumi()
+const { collections, error, loading } = useBangumi()
 const { cycle, theme } = useTheme()
 
 const themeIcons = {
@@ -16,10 +16,38 @@ const themeIcons = {
   system: 'i-ph:monitor',
 }
 
-const items = computed(() => [...watching.value, ...completed.value])
+interface Section {
+  key: keyof Collections
+  label: string
+  list: AnimeItem[]
+  offset: number
+}
+
+const sections = computed<Section[]>(() => {
+  const c = collections.value
+  if (!c)
+    return []
+  let offset = 0
+  return (Object.keys(CATEGORY_LABELS) as (keyof Collections)[])
+    .map(key => ({ key, label: CATEGORY_LABELS[key], list: c[key] }))
+    .filter(s => s.list.length > 0)
+    .map((s) => {
+      const withOffset = { ...s, offset }
+      offset += s.list.length
+      return withOffset
+    })
+})
+
+// flat index across sections for hover lookup
+const items = computed(() => sections.value.flatMap(s => s.list))
 const active = ref<AnimeItem>()
 
-watch(items, list => active.value ??= list[0])
+watch(items, (list) => {
+  active.value ??= list[0]
+  // preload the first covers so the detail pane pops instantly
+  for (const a of list.slice(0, 30))
+    void (new Image().src = a.cover)
+})
 
 const rootRef = useSuperHover({
   onEnter(event) {
@@ -63,29 +91,34 @@ function sublabel(a: AnimeItem) {
         class="flex h-[min(30rem,70vh)] overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800"
       >
         <div ref="rootRef" class="w-44 shrink-0 overflow-y-auto overscroll-contain sm:w-56">
-          <div class="flex flex-col gap-0.5 p-1.5">
-            <a
-              v-for="(a, i) in items"
-              :key="a.id"
-              :href="a.url"
-              target="_blank"
-              rel="noopener"
-              data-super-hover
-              :data-index="i"
-              class="rounded-md px-2 py-1.5 outline-none transition-colors data-[super-hover-active]:bg-neutral-100 dark:data-[super-hover-active]:bg-neutral-900"
-            >
-              <div class="truncate text-sm">
-                {{ a.title }}
-              </div>
-              <div class="truncate text-[11px] text-neutral-400 tabular-nums">
-                {{ sublabel(a) }}
-              </div>
-            </a>
-          </div>
+          <template v-for="s in sections" :key="s.key">
+            <h3 class="sticky top-0 z-10 bg-white/90 px-3 pt-3 pb-1 text-[11px] font-medium tracking-widest text-neutral-400 backdrop-blur-sm dark:bg-neutral-950/90">
+              {{ s.label }} {{ s.list.length }}
+            </h3>
+            <div class="flex flex-col gap-0.5 px-1.5 pb-1.5">
+              <a
+                v-for="(a, i) in s.list"
+                :key="a.id"
+                :href="a.url"
+                target="_blank"
+                rel="noopener"
+                data-super-hover
+                :data-index="s.offset + i"
+                class="rounded-md px-2 py-1.5 outline-none transition-colors data-[super-hover-active]:bg-neutral-100 dark:data-[super-hover-active]:bg-neutral-900"
+              >
+                <div class="truncate text-sm">
+                  {{ a.title }}
+                </div>
+                <div class="truncate text-[11px] text-neutral-400 tabular-nums">
+                  {{ sublabel(a) }}
+                </div>
+              </a>
+            </div>
+          </template>
         </div>
 
         <div class="relative min-w-0 flex-1 border-l border-neutral-200 dark:border-neutral-800">
-          <div v-if="active" :key="active.id" class="absolute inset-0 flex animate-fade-in flex-col overflow-hidden">
+          <div v-if="active" :key="active.id" class="absolute inset-0 flex flex-col overflow-hidden">
             <div class="flex items-start justify-between gap-3 px-4 pt-4 pb-2">
               <h2 class="min-w-0 truncate text-lg leading-tight font-medium sm:text-xl">
                 {{ active.title }}
@@ -130,14 +163,3 @@ function sublabel(a: AnimeItem) {
     </main>
   </div>
 </template>
-
-<style>
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-}
-.animate-fade-in {
-  animation: fade-in 0.2s ease-out;
-}
-</style>

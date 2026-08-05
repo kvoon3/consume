@@ -1,4 +1,5 @@
 import vue from '@vitejs/plugin-vue'
+import { nitro } from 'nitro/vite'
 import unocss from 'unocss/vite'
 import { defineConfig } from 'vite-plus'
 
@@ -15,6 +16,7 @@ export default defineConfig({
   plugins: [
     vue(),
     unocss(),
+    nitro({ serverDir: './server' }),
   ],
   resolve: {
     alias: {

@@ -14,38 +14,33 @@ export interface AnimeItem {
   url: string
 }
 
-interface CollectionEntry {
-  ep_status: number
-  rate: number
-  subject: {
-    date: string
-    eps: number
-    id: number
-    images: { common: string }
-    name: string
-    name_cn: string
-    score: number
-    short_summary: string
-  }
-  updated_at: string
+export interface Collections {
+  completed: AnimeItem[]
+  dropped: AnimeItem[]
+  onHold: AnimeItem[]
+  watching: AnimeItem[]
+  wish: AnimeItem[]
 }
 
-const USERNAME = '1140496'
+export const CATEGORY_LABELS: Record<keyof Collections, string> = {
+  watching: '在看',
+  wish: '想看',
+  completed: '看过',
+  onHold: '搁置',
+  dropped: '抛弃',
+}
 
 export function useBangumi() {
-  const watching = ref<AnimeItem[]>([])
-  const completed = ref<AnimeItem[]>([])
+  const collections = ref<Collections>()
   const loading = ref(true)
   const error = ref('')
 
   onMounted(async () => {
     try {
-      const [w, c] = await Promise.all([
-        fetchCollections(3, 30),
-        fetchCollections(2, 6),
-      ])
-      watching.value = w
-      completed.value = c.toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      const res = await fetch('/api/collections')
+      if (!res.ok)
+        throw new Error(`API ${res.status}`)
+      collections.value = await res.json() as Collections
     } catch (e) {
       error.value = e instanceof Error ? e.message : String(e)
     } finally {
@@ -53,33 +48,5 @@ export function useBangumi() {
     }
   })
 
-  return { completed, error, loading, watching }
-}
-
-async function fetchCollections(type: number, limit: number): Promise<AnimeItem[]> {
-  const res = await fetch(
-    `https://api.bgm.tv/v0/users/${USERNAME}/collections?subject_type=2&type=${type}&limit=${limit}`,
-    {
-      headers: {
-        'Authorization': `Bearer ${import.meta.env.VITE_BANGUMI_TOKEN}`,
-        'User-Agent': 'kvoon/ani-showcase',
-      },
-    },
-  )
-  if (!res.ok)
-    throw new Error(`Bangumi API ${res.status}`)
-  const json = await res.json() as { data: CollectionEntry[] }
-  return json.data.map(e => ({
-    cover: e.subject.images.common,
-    date: e.subject.date,
-    id: e.subject.id,
-    progress: e.ep_status,
-    score: e.rate,
-    siteScore: e.subject.score,
-    summary: e.subject.short_summary,
-    title: e.subject.name_cn || e.subject.name,
-    total: e.subject.eps,
-    updatedAt: e.updated_at,
-    url: `https://bgm.tv/subject/${e.subject.id}`,
-  }))
+  return { collections, error, loading }
 }
