@@ -54,6 +54,7 @@ const trail = ref<{ h: number, section: keyof Collections, y: number }>()
 // rAF lerp toward target row: fast sweeps trail, stops snap tight — no fixed-duration CSS transition
 let targetY = 0
 let rafId = 0
+let leaveTimer = 0
 function startLerp() {
   if (rafId)
     return
@@ -63,7 +64,7 @@ function startLerp() {
       rafId = 0
       return
     }
-    const next = t.y + (targetY - t.y) * 0.35
+    const next = t.y + (targetY - t.y) * 0.18
     t.y = Math.abs(targetY - next) < 0.5 ? targetY : next
     rafId = requestAnimationFrame(tick)
   }
@@ -72,6 +73,7 @@ function startLerp() {
 
 const rootRef = useSuperHover({
   onEnter(event) {
+    clearTimeout(leaveTimer)
     const el = event.detail.current as HTMLElement | null
     if (!el)
       return
@@ -89,7 +91,8 @@ const rootRef = useSuperHover({
     }
   },
   onLeave() {
-    trail.value = undefined
+    // rows have 2px gaps — pointer crosses them between hits; keep the trail alive briefly
+    leaveTimer = setTimeout(() => trail.value = undefined, 200)
   },
 })
 
