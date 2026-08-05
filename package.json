@@ -1,0 +1,30 @@
+{
+  "name": "ani",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "oxlint",
+    "me": "tsx scripts/me.ts",
+    "up": "taze -I major",
+    "release": "bumpp"
+  },
+  "dependencies": {
+    "vue": "^3.6.0-beta.17"
+  },
+  "devDependencies": {
+    "@iconify-json/ph": "^1.2.2",
+    "@kvoon/oxlint-config": "^0.1.0",
+    "@types/node": "^26.1.2",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "bumpp": "^10.0.0",
+    "oxlint": "^1.74.0",
+    "oxlint-tsgolint": "^0.24.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "unocss": "^66.0.0",
+    "vite": "^8.2.0"
+  }
+}
