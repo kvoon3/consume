@@ -64,7 +64,7 @@ function startLerp() {
       rafId = 0
       return
     }
-    const next = t.y + (targetY - t.y) * 0.3
+    const next = scrolling ? targetY : t.y + (targetY - t.y) * 0.65
     t.y = Math.abs(targetY - next) < 0.5 ? targetY : next
     rafId = requestAnimationFrame(tick)
   }
@@ -125,7 +125,7 @@ function sublabel(a: AnimeItem) {
         {{ error }}
       </p>
 
-      <div v-else ref="rootRef" class="flex items-start gap-6">
+      <div v-else ref="rootRef" class="flex items-start gap-6" @scroll.passive.capture="onListScroll">
         <div class="w-44 shrink-0 space-y-6 sm:w-56">
           <section
             v-for="s in sections"
