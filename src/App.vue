@@ -49,11 +49,21 @@ watch(items, (list) => {
     void (new Image().src = a.cover)
 })
 
+const trail = ref<{ h: number, section: keyof Collections, y: number }>()
+
 const rootRef = useSuperHover({
   onEnter(event) {
     const el = event.detail.current as HTMLElement | null
-    if (el)
-      active.value = items.value[Number(el.dataset.index)]
+    if (!el)
+      return
+    const idx = Number(el.dataset.index)
+    active.value = items.value[idx]
+    const section = sections.value.find(s => idx >= s.offset && idx < s.offset + s.list.length)
+    if (section)
+      trail.value = { h: el.offsetHeight, section: section.key, y: el.offsetTop }
+  },
+  onLeave() {
+    trail.value = undefined
   },
 })
 
@@ -96,7 +106,12 @@ function sublabel(a: AnimeItem) {
             <h3 class="border-b border-neutral-200 bg-neutral-50 px-3 py-2 text-[11px] font-medium tracking-widest text-neutral-400 dark:border-neutral-800 dark:bg-neutral-900">
               {{ s.label }} {{ s.list.length }}
             </h3>
-            <div class="flex max-h-72 flex-col gap-0.5 overflow-y-auto overscroll-contain p-1.5">
+            <div class="relative flex max-h-72 flex-col gap-0.5 overflow-y-auto overscroll-contain p-1.5">
+              <div
+                v-if="trail?.section === s.key"
+                class="pointer-events-none absolute right-1.5 left-1.5 rounded-md bg-neutral-100 transition-all duration-200 ease-out dark:bg-neutral-900"
+                :style="{ transform: `translateY(${trail.y}px)`, height: `${trail.h}px` }"
+              />
               <a
                 v-for="(a, i) in s.list"
                 :key="a.id"
@@ -105,7 +120,7 @@ function sublabel(a: AnimeItem) {
                 rel="noopener"
                 data-super-hover
                 :data-index="s.offset + i"
-                class="rounded-md px-2 py-1.5 outline-none data-[super-hover-active]:bg-neutral-100 dark:data-[super-hover-active]:bg-neutral-900"
+                class="relative rounded-md px-2 py-1.5 outline-none"
               >
                 <div class="flex items-baseline justify-between gap-2">
                   <span class="truncate text-sm">{{ a.title }}</span>
