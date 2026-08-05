@@ -16,7 +16,19 @@ export default defineConfig({
   plugins: [
     vue(),
     unocss(),
-    nitro({ serverDir: './server' }),
+    nitro({
+      serverDir: './server',
+      preset: 'cloudflare_module',
+      compatibilityDate: '2024-09-19',
+      cloudflare: {
+        deployConfig: true,
+        nodeCompat: true,
+        wrangler: {
+          name: 'watch',
+          compatibility_flags: ['nodejs_compat', 'nodejs_compat_populate_process_env'],
+        },
+      },
+    }),
   ],
   resolve: {
     alias: {

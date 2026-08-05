@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vp dev",
     "build": "vp build",
+    "deploy": "vp build && wrangler deploy --config .output/server/wrangler.json",
     "preview": "vp preview",
     "lint": "vp lint",
     "me": "tsx scripts/me.ts",
@@ -28,7 +29,8 @@
     "typescript": "^5.9.0",
     "unocss": "^66.0.0",
     "vite": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "wrangler": "^4.118.0"
   },
   "devEngines": {
     "packageManager": {
