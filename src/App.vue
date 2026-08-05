@@ -7,6 +7,7 @@ import { useSuperHover } from 'super-hover/vue'
 
 import type { AnimeItem, Collections } from './composables/useBangumi'
 
+import TasteSummary from './components/TasteSummary.vue'
 import { CATEGORY_LABELS, useBangumi } from './composables/useBangumi'
 import { useTheme } from './composables/useTheme'
 
@@ -48,6 +49,7 @@ const sections = computed<Section[]>(() => {
 })
 
 const items = computed(() => sections.value.flatMap(s => s.list))
+const tasteItems = computed(() => collections.value ? [...collections.value.watching, ...collections.value.completed] : [])
 const active = shallowRef<AnimeItem>()
 const previewY = shallowRef(8)
 
@@ -80,6 +82,14 @@ const rootRef = useSuperHover({
     movePreview(event.detail.y)
   },
 })
+
+function scrollToSection(key: keyof Collections) {
+  const root = rootRef.value
+  const target = root?.querySelector<HTMLElement>(`#collection-${key}`)
+  const header = root?.querySelector<HTMLElement>('.list-grid')
+  if (root && target && header)
+    root.scrollTo({ top: target.offsetTop - header.offsetHeight })
+}
 
 function sublabel(a: AnimeItem) {
   return a.date ? a.date.slice(0, 4) : '—'
@@ -117,12 +127,15 @@ function sublabel(a: AnimeItem) {
       </p>
 
       <div v-else>
+        <TasteSummary :items="tasteItems" />
+
         <nav class="mb-3 flex flex-wrap gap-1" aria-label="Collection categories">
           <a
             v-for="s in sections"
             :key="s.key"
             :href="`#collection-${s.key}`"
             class="rounded-full px-3 py-1.5 text-xs text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-100"
+            @click.prevent="scrollToSection(s.key)"
           >
             {{ s.label }} <span class="text-neutral-400 tabular-nums">{{ s.list.length }}</span>
           </a>
@@ -130,7 +143,7 @@ function sublabel(a: AnimeItem) {
 
         <div
           ref="rootRef"
-          class="relative h-[min(60vh,32rem)] min-h-80 overflow-y-auto overscroll-contain rounded-xl border border-neutral-200 dark:border-neutral-800"
+          class="collection-list relative h-[min(60vh,32rem)] min-h-80 overflow-y-auto overscroll-contain rounded-xl border border-neutral-200 dark:border-neutral-800"
         >
           <div class="list-grid sticky top-0 z-20 border-b border-neutral-200 bg-white/95 px-3 py-1.5 text-[10px] tracking-widest text-neutral-400 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
             <span>title</span>
@@ -140,9 +153,8 @@ function sublabel(a: AnimeItem) {
             <span class="text-right">rating</span>
           </div>
 
-          <section v-for="s in sections" :key="s.key">
+          <section v-for="s in sections" :id="`collection-${s.key}`" :key="s.key">
             <h2
-              :id="`collection-${s.key}`"
               class="sticky top-[27px] z-10 border-b border-neutral-200 bg-neutral-50/95 px-3 py-1 text-[10px] font-medium tracking-widest text-neutral-500 backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95 dark:text-neutral-400"
             >
               {{ s.label }} · {{ s.list.length }}
@@ -195,13 +207,23 @@ function sublabel(a: AnimeItem) {
   gap: 0.5rem;
 }
 
+.collection-list {
+  scroll-behavior: smooth;
+}
+
 .preview-card {
   top: 0;
   right: 17.75rem;
 }
 
 .anchor-space {
-  height: calc(100% - 4rem);
+  height: calc(100% + 4rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collection-list {
+    scroll-behavior: auto;
+  }
 }
 
 @media (max-width: 639px) {
