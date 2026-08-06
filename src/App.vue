@@ -1,13 +1,14 @@
 <script setup lang="ts" vapor>
 import { defineSound } from '@web-kits/audio'
-import { useIntervalFn, useTimeoutFn, useUrlSearchParams } from '@vueuse/core'
+import { useIntervalFn, useUrlSearchParams } from '@vueuse/core'
 import { Languages, Library, Monitor, Moon, Sun } from 'lucide'
 import { MorphIcon } from 'morphicons/vue'
 import { computed, shallowRef, watch } from 'vue'
-import { useSuperHover } from 'super-hover/vue'
 
 import type { Collections, MediaItem, SubjectType } from './composables/useBangumi'
+import type { CollectionSection } from './components/CollectionTable.vue'
 
+import CollectionTable from './components/CollectionTable.vue'
 import CoverBackdrop from './components/CoverBackdrop.vue'
 import RetroCover from './components/RetroCover.vue'
 import TasteSummary from './components/TasteSummary.vue'
@@ -19,11 +20,6 @@ import { useTheme } from './composables/useTheme'
 const { locale, t, toggle: setLocale } = useLocale()
 const { cycle, isDark, theme } = useTheme()
 
-const hoverSound = defineSound({
-  source: { type: 'sine', frequency: { start: 700, end: 500 } },
-  envelope: { decay: 0.035 },
-  gain: 0.06,
-})
 const clickSound = defineSound({
   source: { type: 'triangle', frequency: { start: 520, end: 320 } },
   envelope: { decay: 0.045 },
@@ -39,13 +35,6 @@ const themeIcons = {
   dark: Moon,
   light: Sun,
   system: Monitor,
-}
-
-interface Section {
-  key: keyof Collections
-  label: string
-  list: MediaItem[]
-  offset: number
 }
 
 const subjectSlugs: Record<SubjectType, string> = {
@@ -86,13 +75,13 @@ const subjectTabs = computed(() => SUBJECT_TYPES.map(type => ({
   type,
 })))
 
-const sections = computed<Section[]>(() => {
+const sections = computed<CollectionSection[]>(() => {
   const c = collections.value
   if (!c)
     return []
   let offset = 0
   return CATEGORY_KEYS
-    .map(key => ({ key, label: '', list: c[key].filter(item => item.subjectType === activeSubject.value) }))
+    .map(key => ({ key, list: c[key].filter(item => item.subjectType === activeSubject.value) }))
     .filter(s => s.list.length > 0)
     .map((s) => {
       const withOffset = { ...s, offset }
@@ -111,41 +100,10 @@ watch(watchingItems, () => titleCoverIndex.value = 0)
 const tasteItems = computed(() => collections.value
   ? [...collections.value.watching, ...collections.value.completed].filter(item => item.subjectType === activeSubject.value)
   : [])
-const active = shallowRef<MediaItem>()
-const highlightedSection = shallowRef<keyof Collections>()
-const previewY = shallowRef(8)
-const { start: startHighlightTimeout, stop: stopHighlightTimeout } = useTimeoutFn(() => {
-  highlightedSection.value = undefined
-}, 1000, { immediate: false })
 
 watch(items, (list) => {
   for (const item of list.slice(0, 30))
     void (new Image().src = item.cover)
-})
-
-function movePreview(y: number) {
-  const root = rootRef.value
-  if (!root)
-    return
-  const rect = root.getBoundingClientRect()
-  previewY.value = root.scrollTop + Math.max(8, Math.min(y - rect.top + 12, rect.height - 176))
-}
-
-const rootRef = useSuperHover({
-  onEnter(event) {
-    const el = event.detail.current as HTMLElement | null
-    if (!el)
-      return
-    active.value = items.value[Number(el.dataset.index)]
-    movePreview(event.detail.y)
-    hoverSound()
-  },
-  onLeave() {
-    active.value = undefined
-  },
-  onMove(event) {
-    movePreview(event.detail.y)
-  },
 })
 
 function toggleLocale() {
@@ -159,70 +117,11 @@ function toggleTheme() {
 }
 
 function selectSubject(type: SubjectType) {
-  active.value = undefined
-  stopHighlightTimeout()
-  highlightedSection.value = undefined
-  if (rootRef.value)
-    rootRef.value.scrollTop = 0
   activeSubject.value = type
 }
 
-function scrollToSection(key: keyof Collections) {
-  const root = rootRef.value
-  const target = root?.querySelector<HTMLElement>(`#collection-${key}`)
-  const header = root?.querySelector<HTMLElement>('.list-grid')
-  if (root && target && header) {
-    root.scrollTo({ top: target.offsetTop - header.offsetHeight })
-    stopHighlightTimeout()
-    highlightedSection.value = key
-    startHighlightTimeout()
-  }
-}
-
-function sectionLabel(key: keyof Collections) {
-  const labels = t.value.subjectLabels as Partial<Record<SubjectType, Partial<Record<keyof Collections, string>>>>
-  return labels[activeSubject.value]?.[key] ?? t.value[key]
-}
-
-function displayTitle(a: MediaItem) {
-  return locale.value === 'zh' && a.titleCn ? a.titleCn : a.title
-}
-
-function sublabel(a: MediaItem) {
-  return a.date ? a.date.slice(0, 4) : '—'
-}
-
-type DetailColumn = 'creator' | 'year' | 'progress' | 'score'
-const COLUMN_WIDTHS: Record<DetailColumn, number> = { creator: 10, progress: 4.5, score: 3, year: 4 }
-const SUBJECT_COLUMNS: Record<SubjectType, DetailColumn[]> = {
-  1: ['year', 'progress', 'score'],
-  2: ['year', 'progress', 'score'],
-  3: ['year', 'score'],
-  4: ['year', 'score'],
-  6: ['year', 'progress', 'score'],
-  podcast: ['creator', 'score'],
-}
-const columns = computed(() => SUBJECT_COLUMNS[activeSubject.value])
-const gridStyle = computed(() => ({
-  '--cols': `minmax(0, 1fr) 13rem ${columns.value.map(c => `${COLUMN_WIDTHS[c]}rem`).join(' ')}`,
-}))
-// rem width of the detail area + gaps + row padding, used to place the preview card
-const detailWidth = computed(() =>
-  columns.value.reduce((w, c) => w + COLUMN_WIDTHS[c], 0) + columns.value.length * 0.5 + 1.25,
-)
-
-function columnHeader(col: DetailColumn) {
-  return { creator: t.value.creator, progress: t.value.progress, score: t.value.rating, year: t.value.aired }[col]
-}
-
-function columnValue(a: MediaItem, col: DetailColumn) {
-  if (col === 'year')
-    return sublabel(a)
-  if (col === 'score')
-    return a.score || '—'
-  if (col === 'creator')
-    return a.creator || '—'
-  return a.total ? `${a.progress}/${a.total}` : `${a.progress} ${t.value.eps}`
+function displayTitle(item: MediaItem) {
+  return locale.value === 'zh' && item.titleCn ? item.titleCn : item.title
 }
 </script>
 
@@ -290,76 +189,19 @@ function columnValue(a: MediaItem, col: DetailColumn) {
         </button>
       </nav>
 
-      <div v-if="loading" role="status" class="flex h-[min(60vh,32rem)] min-h-80 items-center justify-center rounded-xl border border-base text-neutral-400">
-        <span class="size-4 animate-spin rounded-full border-2 border-current border-r-transparent motion-reduce:animate-none" />
-        <span class="sr-only">Loading collections…</span>
-      </div>
-      <p v-else-if="error" class="text-sm text-red-500">
+      <p v-if="error" class="text-sm text-red-500">
         {{ error }}
       </p>
-
-      <div v-else>
-        <TasteSummary :items="tasteItems" :spotify-visible="activeSubject === 3" />
-
-        <nav class="mb-3 flex flex-wrap gap-1" aria-label="Collection categories">
-          <a
-            v-for="s in sections"
-            :key="s.key"
-            :href="`#collection-${s.key}`"
-            class="category-link text-muted rounded-full px-3 py-1.5 text-xs hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-900 dark:hover:text-neutral-100"
-            :class="{ 'is-highlighted': highlightedSection === s.key }"
-            @click.prevent="clickSound(); scrollToSection(s.key)"
-          >
-            {{ sectionLabel(s.key) }} <span class="text-neutral-400 tabular-nums">{{ s.list.length }}</span>
-          </a>
-        </nav>
-
-        <div class="h-[min(60vh,32rem)] min-h-80 overflow-hidden rounded-xl border border-base">
-          <div
-            ref="rootRef"
-            class="collection-list scroll-fade-b relative h-full overflow-y-auto overscroll-contain"
-          >
-          <div class="list-grid sticky top-0 z-20 border-base bg-base border-b px-3 py-1.5 text-[10px] tracking-widest text-neutral-400 backdrop-blur" :style="gridStyle">
-            <span>{{ t.title }}</span>
-            <span class="preview-column" />
-            <span v-for="col in columns" :key="col" class="detail-column" :class="{ 'text-right': col === 'score' }">{{ columnHeader(col) }}</span>
-          </div>
-
-          <section v-for="s in sections" :id="`collection-${s.key}`" :key="s.key">
-            <h2
-              class="section-heading sticky top-[27px] z-10 border-base bg-subtle text-muted border-b px-3 py-1 text-[10px] font-medium tracking-widest backdrop-blur"
-              :class="{ 'is-highlighted': highlightedSection === s.key }"
-            >
-              {{ sectionLabel(s.key) }} · {{ s.list.length }}
-            </h2>
-            <a
-              v-for="(a, i) in s.list"
-              :key="a.id"
-              :href="a.url"
-              target="_blank"
-              rel="noopener"
-              data-super-hover
-              :data-index="s.offset + i"
-              class="list-grid border-b border-neutral-100 px-3 py-1 text-xs outline-none transition-colors last:border-b-0 hover:bg-neutral-50 focus-visible:bg-neutral-50 dark:border-neutral-900 dark:hover:bg-neutral-900/60 dark:focus-visible:bg-neutral-900/60"
-              :style="gridStyle"
-            >
-              <span class="truncate text-sm">{{ displayTitle(a) }}</span>
-              <span class="preview-column" />
-              <span v-for="col in columns" :key="col" class="detail-column tabular-nums" :class="[col === 'score' ? 'text-right text-amber-500' : 'text-neutral-400', col === 'creator' ? 'truncate' : '']">{{ columnValue(a, col) }}</span>
-            </a>
-          </section>
-
-
-          <RetroCover
-            v-if="active"
-            :item="active"
-            :transition="false"
-            class="preview-card pointer-events-none absolute z-30 hidden h-36 w-28 shadow-xl sm:block"
-            :style="{ transform: `translateY(${previewY}px)`, right: `${detailWidth}rem` }"
-          />
-        </div>
-        </div>
-      </div>
+      <template v-else>
+        <TasteSummary v-if="!loading" :items="tasteItems" :spotify-visible="activeSubject === 3" />
+        <CollectionTable
+          :key="activeSubject"
+          :loading="loading"
+          :sections="sections"
+          :subject="activeSubject"
+          @navigate="clickSound()"
+        />
+      </template>
 
     </main>
   </div>
@@ -419,102 +261,6 @@ function columnValue(a: MediaItem, col: DetailColumn) {
   }
 }
 
-.list-grid {
-  display: grid;
-  grid-template-columns: var(--cols);
-  align-items: center;
-  gap: 0.5rem;
-}
-
-@property --scroll-fade-b {
-  syntax: '<length-percentage>';
-  inherits: false;
-  initial-value: 0px;
-}
-
-@keyframes scroll-fade-reveal-b {
-  from {
-    --scroll-fade-b: min(12%, 2.5rem);
-  }
-
-  to {
-    --scroll-fade-b: 0px;
-  }
-}
-
-.scroll-fade-b {
-  --scroll-fade-size: min(12%, 2.5rem);
-  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - var(--scroll-fade-b, 0px)), transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - var(--scroll-fade-b, 0px)), transparent 100%);
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-}
-
-@supports (animation-timeline: scroll()) {
-  .scroll-fade-b {
-    animation: scroll-fade-reveal-b 1ms ease-in-out both;
-    animation-range: calc(100% - 6rem) 100%;
-    animation-timeline: scroll(self y);
-  }
-}
-
-@supports not (animation-timeline: scroll()) {
-  .scroll-fade-b {
-    --scroll-fade-b: var(--scroll-fade-size);
-  }
-}
-
-.collection-list {
-  scroll-behavior: smooth;
-  scrollbar-width: thin;
-  scrollbar-color: rgb(163 163 163 / 0.4) transparent;
-}
-
-.collection-list::-webkit-scrollbar {
-  width: 10px;
-}
-
-.collection-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.collection-list::-webkit-scrollbar-thumb {
-  background: rgb(163 163 163 / 0.35);
-  background-clip: padding-box;
-  border: 3px solid transparent;
-  border-radius: 9999px;
-}
-
-.preview-card {
-  top: 0;
-}
-
-
-.category-link,
-.section-heading {
-  transition: background-color 180ms ease, color 180ms ease;
-}
-
-.category-link.is-highlighted {
-  background: rgb(229 229 229);
-  color: rgb(23 23 23);
-}
-
-.section-heading.is-highlighted {
-  background: rgb(229 229 229 / 0.95);
-  color: rgb(23 23 23);
-}
-
-:global(.dark) .category-link.is-highlighted {
-  background: rgb(38 38 38);
-  color: rgb(245 245 245);
-}
-
-:global(.dark) .section-heading.is-highlighted {
-  background: rgb(38 38 38 / 0.95);
-  color: rgb(245 245 245);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .backdrop-fade-enter-active,
   .backdrop-fade-leave-active {
@@ -530,26 +276,11 @@ function columnValue(a: MediaItem, col: DetailColumn) {
     opacity: 1;
   }
 
-  .collection-list {
-    scroll-behavior: auto;
-  }
-
 }
 
 @keyframes title-word-fade-in {
   from {
     opacity: 0;
-  }
-}
-
-@media (max-width: 639px) {
-  .list-grid {
-    grid-template-columns: minmax(0, 1fr) 3rem;
-  }
-
-  .preview-column,
-  .detail-column {
-    display: none;
   }
 }
 </style>

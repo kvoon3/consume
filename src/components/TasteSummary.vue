@@ -17,7 +17,9 @@ const { t } = useLocale()
 const spotifyEnabled = computed(() => Boolean(props.spotifyVisible))
 const { data: spotify } = useSpotify(spotifyEnabled)
 const selectedTrack = shallowRef<SpotifyTrack>()
-const playerCollapsed = shallowRef(false)
+const playerCollapsed = shallowRef(true)
+const playerLoading = shallowRef(false)
+const playerKey = shallowRef(0)
 const clickSound = defineSound({
   source: { type: 'triangle', frequency: { start: 560, end: 360 } },
   envelope: { decay: 0.045 },
@@ -25,7 +27,22 @@ const clickSound = defineSound({
 })
 const embedUrl = computed(() => selectedTrack.value?.url.replace('open.spotify.com/', 'open.spotify.com/embed/'))
 
-watch(spotify, data => selectedTrack.value ??= data?.topTracks[0], { immediate: true })
+watch(spotify, (data) => {
+  if (!selectedTrack.value && data?.topTracks[0])
+    selectTrack(data.topTracks[0])
+}, { immediate: true })
+
+function selectTrack(track: SpotifyTrack) {
+  playerCollapsed.value = true
+  playerLoading.value = true
+  playerKey.value++
+  selectedTrack.value = track
+}
+
+function playerLoaded() {
+  playerLoading.value = false
+  playerCollapsed.value = false
+}
 
 const ignoredTags = new Set(['Anime', 'TV', '动画', '日本', '神作'])
 const tagAliases: Record<string, string> = { 漫改: '漫画改' }
@@ -129,7 +146,7 @@ const maxTag = computed(() => Math.max(...tags.value.map(item => item.count), 1)
           type="button"
           class="taste-row flex w-full items-center gap-3 rounded px-1 py-1 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900/60"
           :style="{ '--delay': `${index * 30}ms` }"
-          @click="clickSound(); selectedTrack = track; playerCollapsed = false"
+          @click="clickSound(); selectTrack(track)"
         >
           <img :src="track.cover" :alt="track.title" class="size-7 rounded object-cover" loading="lazy">
           <span class="min-w-0 flex-1 truncate text-xs">{{ track.title }}</span>
@@ -169,8 +186,9 @@ const maxTag = computed(() => Math.max(...tags.value.map(item => item.count), 1)
       <button
         type="button"
         class="player-collapse absolute -left-4 top-4 z-10 flex h-12 w-4 items-center justify-center rounded-l-lg border border-r-0 border-neutral-200 bg-white/90 text-sm text-neutral-500 shadow-md backdrop-blur transition-colors hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900/90 dark:text-neutral-400 dark:hover:text-white"
-        :aria-label="playerCollapsed ? 'Expand Spotify player' : 'Collapse Spotify player'"
+        :aria-label="playerLoading ? 'Spotify player loading' : playerCollapsed ? 'Expand Spotify player' : 'Collapse Spotify player'"
         :aria-expanded="!playerCollapsed"
+        :disabled="playerLoading"
         @click="clickSound(); playerCollapsed = !playerCollapsed"
       >
         {{ playerCollapsed ? '‹' : '›' }}
@@ -184,10 +202,12 @@ const maxTag = computed(() => Math.max(...tags.value.map(item => item.count), 1)
         ×
       </button>
       <iframe
+        :key="playerKey"
         :src="embedUrl"
         :title="`Spotify: ${selectedTrack!.title}`"
         class="h-20 w-full rounded-xl border-0 shadow-xl shadow-neutral-900/15 dark:shadow-black/50"
         allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+        @load="playerLoaded"
       />
     </div>
   </Transition>
