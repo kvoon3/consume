@@ -9,12 +9,9 @@ import { useSuperHover } from 'super-hover/vue'
 import type { Collections, MediaItem, SubjectType } from './composables/useBangumi'
 
 import CoverBackdrop from './components/CoverBackdrop.vue'
-import PlayerBar from './components/PlayerBar.vue'
 import TasteSummary from './components/TasteSummary.vue'
 import { CATEGORY_KEYS, SUBJECT_TYPES, useBangumi } from './composables/useBangumi'
 import { useNeoDB } from './composables/useNeoDB'
-import { useSpotify } from './composables/useSpotify'
-import { playQueue } from './composables/useSpotifyPlayer'
 import { useLocale } from './composables/useLocale'
 import { useTheme } from './composables/useTheme'
 
@@ -30,13 +27,6 @@ const collections = computed<Collections | undefined>(() => {
 })
 const { locale, t, toggle: toggleLocale } = useLocale()
 const { cycle, isDark, theme } = useTheme()
-
-const { data: spotify } = useSpotify()
-// Autoplay is best-effort: browsers block audio before the first user gesture
-watch(spotify, (data) => {
-  if (data?.topTracks.length)
-    void playQueue(data.topTracks)
-})
 
 const hoverSound = defineSound({
   source: { type: 'sine', frequency: { start: 700, end: 500 } },
@@ -343,8 +333,6 @@ function columnValue(a: MediaItem, col: DetailColumn) {
       </div>
 
     </main>
-
-    <PlayerBar />
   </div>
 </template>
 

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, shallowRef } from 'vue'
 
 import type { MediaItem } from '../composables/useBangumi'
+import type { SpotifyTrack } from '../composables/useSpotify'
 
 import { useLocale } from '../composables/useLocale'
 import { useSpotify } from '../composables/useSpotify'
-import { playQueue } from '../composables/useSpotifyPlayer'
 
 const props = defineProps<{
   items: MediaItem[]
@@ -14,6 +14,8 @@ const props = defineProps<{
 
 const { t } = useLocale()
 const { data: spotify } = useSpotify()
+const selectedTrack = shallowRef<SpotifyTrack>()
+const embedUrl = computed(() => selectedTrack.value?.url.replace('open.spotify.com/', 'open.spotify.com/embed/'))
 
 const ignoredTags = new Set(['Anime', 'TV', '动画', '日本', '神作'])
 const tagAliases: Record<string, string> = { 漫改: '漫画改' }
@@ -110,21 +112,27 @@ const maxTag = computed(() => Math.max(...tags.value.map(item => item.count), 1)
       <h2 class="mb-3 text-[10px] tracking-widest text-neutral-400">
         {{ t.topTracks }} · SPOTIFY
       </h2>
+      <iframe
+        v-if="embedUrl"
+        :src="embedUrl"
+        :title="`Spotify: ${selectedTrack!.title}`"
+        class="mb-3 h-20 w-full rounded-xl border-0"
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+        loading="lazy"
+      />
       <div>
-        <div
+        <button
           v-for="(track, index) in spotify.topTracks.slice(0, 10)"
           :key="track.uri"
-          class="taste-row flex cursor-pointer items-center gap-3 rounded px-1 py-1 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900/60"
+          type="button"
+          class="taste-row flex w-full items-center gap-3 rounded px-1 py-1 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900/60"
           :style="{ '--delay': `${index * 30}ms` }"
-          role="button"
-          tabindex="0"
-          @click="playQueue(spotify!.topTracks, index)"
-          @keydown.enter="playQueue(spotify!.topTracks, index)"
+          @click="selectedTrack = track"
         >
           <img :src="track.cover" :alt="track.title" class="size-7 rounded object-cover" loading="lazy">
           <span class="min-w-0 flex-1 truncate text-xs">{{ track.title }}</span>
           <span class="truncate text-xs text-neutral-400">{{ track.artist }}</span>
-        </div>
+        </button>
       </div>
     </section>
 
