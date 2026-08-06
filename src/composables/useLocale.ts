@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 
 export type Locale = 'en' | 'zh'
 
-const locale = ref<Locale>(localStorage.getItem('locale') === 'en' ? 'en' : 'zh')
+const locale = ref<Locale>(localStorage.getItem('locale') === 'zh' ? 'zh' : 'en')
 
 const messages = {
   zh: {
