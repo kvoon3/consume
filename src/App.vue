@@ -445,16 +445,16 @@ function columnValue(a: MediaItem, col: DetailColumn) {
 }
 
 .crt-cover {
-  border: 1px solid rgb(163 154 132);
+  border: 1px solid rgb(212 212 212);
   border-radius: 0.7rem 0.7rem 0.45rem 0.45rem;
   background:
-    linear-gradient(135deg, rgb(255 255 255 / 0.55), transparent 30%),
-    linear-gradient(145deg, rgb(231 225 204), rgb(190 181 155));
+    linear-gradient(135deg, rgb(255 255 255), transparent 32%),
+    linear-gradient(145deg, rgb(250 250 250), rgb(229 229 229));
   box-shadow:
-    0 14px 28px rgb(0 0 0 / 0.28),
-    inset 2px 2px 0 rgb(255 255 255 / 0.5),
-    inset -2px -2px 0 rgb(94 86 68 / 0.25),
-    inset 0 -1.4rem 0 rgb(204 196 172 / 0.55);
+    0 14px 28px rgb(0 0 0 / 0.18),
+    inset 2px 2px 0 rgb(255 255 255 / 0.9),
+    inset -2px -2px 0 rgb(163 163 163 / 0.2),
+    inset 0 -1.4rem 0 rgb(212 212 212 / 0.45);
 }
 
 .crt-cover::before {
@@ -465,7 +465,7 @@ function columnValue(a: MediaItem, col: DetailColumn) {
   z-index: -1;
   height: 0.35rem;
   border-radius: 0 0 0.25rem 0.25rem;
-  background: rgb(126 117 96);
+  background: rgb(163 163 163);
   content: '';
 }
 
@@ -486,13 +486,13 @@ function columnValue(a: MediaItem, col: DetailColumn) {
 }
 
 .crt-screen {
-  border: 2px solid rgb(67 63 53);
+  border: 2px solid rgb(64 64 64);
   border-radius: 12% / 8%;
   background: rgb(10 10 10);
   box-shadow:
-    -2px -2px 0 rgb(123 115 94),
-    2px 2px 0 rgb(255 252 230 / 0.65),
-    0 0 0 4px rgb(157 148 124),
+    -2px -2px 0 rgb(163 163 163),
+    2px 2px 0 rgb(255 255 255 / 0.9),
+    0 0 0 4px rgb(212 212 212),
     0 0 0 5px rgb(255 255 255 / 0.2),
     inset 0 0 22px 6px rgb(0 0 0 / 0.82),
     inset 3px 3px 6px rgb(0 0 0 / 0.7),
@@ -536,14 +536,14 @@ function columnValue(a: MediaItem, col: DetailColumn) {
 }
 
 .mac-brand {
-  border: 1px solid rgb(120 111 90 / 0.45);
+  border: 1px solid rgb(115 115 115 / 0.55);
   background:
     linear-gradient(to bottom, #68a9d2 0 20%, #7bb862 20% 40%, #e7c457 40% 60%, #df8a4e 60% 80%, #c8665b 80%);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.25);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
 }
 
 .mac-slot {
-  background: rgb(79 73 59 / 0.75);
+  background: rgb(82 82 82 / 0.75);
   box-shadow: 0 1px 0 rgb(255 255 255 / 0.3);
 }
 
