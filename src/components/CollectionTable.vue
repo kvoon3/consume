@@ -86,17 +86,32 @@ const rootRef = useSuperHover({
   },
 })
 
+function pageCanScroll() {
+  return document.documentElement.scrollHeight > document.documentElement.clientHeight
+}
+
+function lockScrolling() {
+  scrollingUnlocked.value = !pageCanScroll()
+}
+
+function unlockIfPageCannotScroll() {
+  if (!pageCanScroll())
+    scrollingUnlocked.value = true
+}
+
 watch(() => props.subject, () => {
   active.value = undefined
   highlightedSection.value = undefined
   if (rootRef.value)
     rootRef.value.scrollTop = 0
 })
+watch(() => props.loading, unlockIfPageCannotScroll, { flush: 'post' })
 
-useEventListener(window, 'scroll', () => scrollingUnlocked.value = false, { passive: true })
+useEventListener(window, 'scroll', lockScrolling, { passive: true })
+useEventListener(window, 'resize', unlockIfPageCannotScroll, { passive: true })
 useEventListener(document, 'pointerdown', (event) => {
   if (!(event.target as Element).closest('[data-collection-session]'))
-    scrollingUnlocked.value = false
+    lockScrolling()
 }, { capture: true })
 
 function scrollToSection(key: keyof Collections) {
