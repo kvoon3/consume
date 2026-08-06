@@ -153,7 +153,7 @@ const maxTag = computed(() => Math.max(...tags.value.map(item => item.count), 1)
   </details>
 
   <Transition name="player-pop">
-    <div v-if="embedUrl" class="spotify-player fixed bottom-2 right-2 z-50 w-[min(calc(100vw-1rem),18rem)] sm:right-4 sm:w-[22rem]">
+    <div v-if="embedUrl" class="spotify-player fixed bottom-2 right-2 z-50 w-[min(calc(100vw-1rem),14rem)] sm:right-4 sm:w-[18rem]">
       <button
         type="button"
         class="absolute -right-2 -top-2 z-10 flex size-6 items-center justify-center rounded-full border border-neutral-200 bg-white text-sm text-neutral-500 shadow-md transition-colors hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:text-white"

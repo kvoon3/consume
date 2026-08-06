@@ -168,15 +168,15 @@ function sublabel(a: MediaItem) {
   return a.date ? a.date.slice(0, 4) : '—'
 }
 
-type DetailColumn = 'creator' | 'year' | 'progress' | 'score'
-const COLUMN_WIDTHS: Record<DetailColumn, number> = { creator: 10, progress: 4.5, score: 3, year: 4 }
+type DetailColumn = 'year' | 'progress' | 'score'
+const COLUMN_WIDTHS: Record<DetailColumn, number> = { progress: 4.5, score: 3, year: 4 }
 const SUBJECT_COLUMNS: Record<SubjectType, DetailColumn[]> = {
-  1: ['creator', 'year', 'progress', 'score'],
-  2: ['creator', 'year', 'progress', 'score'],
-  3: ['creator', 'year', 'score'],
-  4: ['creator', 'year', 'score'],
+  1: ['year', 'progress', 'score'],
+  2: ['year', 'progress', 'score'],
+  3: ['year', 'score'],
+  4: ['year', 'score'],
   6: ['year', 'progress', 'score'],
-  podcast: ['creator', 'year', 'score'],
+  podcast: ['year', 'score'],
 }
 const columns = computed(() => SUBJECT_COLUMNS[activeSubject.value])
 const gridStyle = computed(() => ({
@@ -188,12 +188,10 @@ const detailWidth = computed(() =>
 )
 
 function columnHeader(col: DetailColumn) {
-  return { creator: t.value.creator, progress: t.value.progress, score: t.value.rating, year: t.value.aired }[col]
+  return { progress: t.value.progress, score: t.value.rating, year: t.value.aired }[col]
 }
 
 function columnValue(a: MediaItem, col: DetailColumn) {
-  if (col === 'creator')
-    return a.creator || '—'
   if (col === 'year')
     return sublabel(a)
   if (col === 'score')
@@ -209,22 +207,23 @@ function columnValue(a: MediaItem, col: DetailColumn) {
     </Transition>
 
     <main class="relative z-10 mx-auto max-w-5xl px-6 py-12 sm:py-16">
-      <header class="mb-8 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <a href="https://bgm.tv/user/1140496" aria-label="Kevin Kwong on Bangumi">
+      <header class="mb-8 flex items-center justify-between gap-3">
+        <div class="flex min-w-0 items-center gap-3">
+          <a href="https://bgm.tv/user/1140496" aria-label="Kevin Kwong on Bangumi" class="shrink-0">
             <img
               src="https://kvoon.me/.netlify/images?q=70&url=%2Favatar_cropped.jpg"
               alt="Kevin Kwong"
-              class="size-10 rounded-full ring-1 ring-black/10 dark:ring-white/10"
+              class="size-10 shrink-0 rounded-full ring-1 ring-black/10 dark:ring-white/10"
             >
           </a>
-          <h1 class="text-xl font-medium tracking-tight" aria-label="Kevin Kwong is watching…">
-            <span class="title-word" aria-hidden="true">Kevin Kwong</span>
-            <span class="title-word ml-1" aria-hidden="true">is</span>
-            <span class="title-word ml-1" aria-hidden="true">watching<span class="title-dot">.</span><span class="title-dot">.</span><span class="title-dot">.</span></span>
+          <h1 class="min-w-0 truncate text-base font-medium tracking-tight sm:text-xl" aria-label="Kevin Kwong is watching…">
+            <span class="sm:hidden" aria-hidden="true">Kevin</span>
+            <span class="title-word hidden sm:inline-block" aria-hidden="true">Kevin Kwong</span>
+            <span class="title-word ml-1 hidden sm:inline-block" aria-hidden="true">is</span>
+            <span class="title-word ml-1 hidden sm:inline-block" aria-hidden="true">watching<span class="title-dot">.</span><span class="title-dot">.</span><span class="title-dot">.</span></span>
           </h1>
         </div>
-        <nav class="flex items-center gap-3 text-neutral-400" aria-label="Site links">
+        <nav class="flex shrink-0 items-center gap-2 text-neutral-400 sm:gap-3" aria-label="Site links">
           <a href="https://bgm.tv/user/1140496" target="_blank" rel="noopener" aria-label="Bangumi" title="Bangumi" class="transition-colors hover:text-neutral-900 dark:hover:text-neutral-100">
             <MorphIcon :icon="Library" :size="16" />
           </a>
@@ -248,9 +247,22 @@ function columnValue(a: MediaItem, col: DetailColumn) {
         </nav>
       </header>
 
-      <p v-if="loading" class="text-sm text-neutral-400">
-        Loading…
-      </p>
+      <div v-if="loading" role="status" aria-label="Loading collections" class="animate-pulse motion-reduce:animate-none">
+        <div class="mb-5 flex gap-2">
+          <span v-for="i in 5" :key="i" class="h-7 rounded-full bg-neutral-200 dark:bg-neutral-800" :class="i === 1 ? 'w-20' : 'w-16'" />
+        </div>
+        <div class="mb-5 h-10 rounded-xl border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900" />
+        <div class="mb-3 flex gap-2">
+          <span v-for="i in 3" :key="i" class="h-7 w-20 rounded-full bg-neutral-200 dark:bg-neutral-800" />
+        </div>
+        <div class="h-[min(60vh,32rem)] min-h-80 overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800">
+          <div class="h-7 border-b border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900" />
+          <div v-for="i in 10" :key="i" class="flex h-8 items-center border-b border-neutral-100 px-3 dark:border-neutral-900">
+            <span class="h-3 rounded bg-neutral-200 dark:bg-neutral-800" :style="{ width: `${35 + (i % 4) * 10}%` }" />
+          </div>
+        </div>
+        <span class="sr-only">Loading…</span>
+      </div>
       <p v-else-if="error" class="text-sm text-red-500">
         {{ error }}
       </p>
