@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import type { AnimeItem } from '../composables/useBangumi'
+import type { MediaItem } from '../composables/useBangumi'
 
 import { useLocale } from '../composables/useLocale'
 
 const props = defineProps<{
-  items: AnimeItem[]
+  items: MediaItem[]
 }>()
 
 const { t } = useLocale()

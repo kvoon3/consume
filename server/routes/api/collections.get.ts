@@ -15,6 +15,7 @@ const CATEGORIES = {
 interface CollectionEntry {
   ep_status: number
   rate: number
+  vol_status: number
   type: number
   subject: {
     date: string
@@ -24,6 +25,8 @@ interface CollectionEntry {
     name: string
     name_cn: string
     tags?: { name: string }[]
+    type: number
+    volumes: number
   }
   updated_at: string
 }
@@ -36,7 +39,6 @@ async function fetchCollections() {
     url.search = new URLSearchParams({
       limit: String(PAGE_SIZE),
       offset: String(data.length),
-      subject_type: '2',
     }).toString()
 
     const headers: Record<string, string> = {
@@ -68,12 +70,13 @@ export default defineCachedHandler(async () => {
           cover: entry.subject.images.grid,
           date: entry.subject.date,
           id: entry.subject.id,
-          progress: entry.ep_status,
+          progress: entry.subject.type === 1 ? entry.vol_status : entry.ep_status,
           score: entry.rate,
+          subjectType: entry.subject.type,
           tags: entry.subject.tags?.map(tag => tag.name) ?? [],
           title: entry.subject.name,
           titleCn: entry.subject.name_cn,
-          total: entry.subject.eps,
+          total: entry.subject.type === 1 ? entry.subject.volumes : entry.subject.eps,
           url: `https://bgm.tv/subject/${entry.subject.id}`,
         })),
     ]),

@@ -6,6 +6,11 @@ const locale = ref<Locale>(localStorage.getItem('locale') === 'en' ? 'en' : 'zh'
 
 const messages = {
   zh: {
+    anime: '动画',
+    book: '书籍',
+    music: '音乐',
+    game: '游戏',
+    real: '三次元',
     watching: '在看',
     wish: '想看',
     completed: '看过',
@@ -23,6 +28,11 @@ const messages = {
     avg: '均分',
   },
   en: {
+    anime: 'Anime',
+    book: 'Books',
+    music: 'Music',
+    game: 'Games',
+    real: 'Live action',
     watching: 'Watching',
     wish: 'Wish',
     completed: 'Completed',

@@ -1,15 +1,16 @@
 <script setup lang="ts" vapor>
 import { defineSound } from '@web-kits/audio'
+import { useUrlSearchParams } from '@vueuse/core'
 import { Languages, Library, Monitor, Moon, Sun } from 'lucide'
 import { MorphIcon } from 'morphicons/vue'
 import { computed, shallowRef, watch } from 'vue'
 import { useSuperHover } from 'super-hover/vue'
 
-import type { AnimeItem, Collections } from './composables/useBangumi'
+import type { Collections, MediaItem, SubjectType } from './composables/useBangumi'
 
 import CoverBackdrop from './components/CoverBackdrop.vue'
 import TasteSummary from './components/TasteSummary.vue'
-import { CATEGORY_KEYS, useBangumi } from './composables/useBangumi'
+import { CATEGORY_KEYS, SUBJECT_TYPES, useBangumi } from './composables/useBangumi'
 import { useLocale } from './composables/useLocale'
 import { useTheme } from './composables/useTheme'
 
@@ -32,9 +33,38 @@ const themeIcons = {
 interface Section {
   key: keyof Collections
   label: string
-  list: AnimeItem[]
+  list: MediaItem[]
   offset: number
 }
+
+const subjectSlugs: Record<SubjectType, string> = {
+  1: 'book',
+  2: 'anime',
+  3: 'music',
+  4: 'game',
+  6: 'real',
+}
+const params = useUrlSearchParams('history', { writeMode: 'push' })
+const activeSubject = computed<SubjectType>({
+  get: () => SUBJECT_TYPES.find(type => subjectSlugs[type] === params.type) ?? 2,
+  set: type => params.type = subjectSlugs[type],
+})
+
+const subjectLabels = computed<Record<SubjectType, string>>(() => ({
+  1: t.value.book,
+  2: t.value.anime,
+  3: t.value.music,
+  4: t.value.game,
+  6: t.value.real,
+}))
+
+const subjectTabs = computed(() => SUBJECT_TYPES.map(type => ({
+  count: collections.value
+    ? CATEGORY_KEYS.reduce((count, key) => count + collections.value![key].filter(item => item.subjectType === type).length, 0)
+    : 0,
+  label: subjectLabels.value[type],
+  type,
+})))
 
 const sections = computed<Section[]>(() => {
   const c = collections.value
@@ -42,7 +72,7 @@ const sections = computed<Section[]>(() => {
     return []
   let offset = 0
   return CATEGORY_KEYS
-    .map(key => ({ key, label: t.value[key], list: c[key] }))
+    .map(key => ({ key, label: t.value[key], list: c[key].filter(item => item.subjectType === activeSubject.value) }))
     .filter(s => s.list.length > 0)
     .map((s) => {
       const withOffset = { ...s, offset }
@@ -52,8 +82,10 @@ const sections = computed<Section[]>(() => {
 })
 
 const items = computed(() => sections.value.flatMap(s => s.list))
-const tasteItems = computed(() => collections.value ? [...collections.value.watching, ...collections.value.completed] : [])
-const active = shallowRef<AnimeItem>()
+const tasteItems = computed(() => collections.value
+  ? [...collections.value.watching, ...collections.value.completed].filter(item => item.subjectType === activeSubject.value)
+  : [])
+const active = shallowRef<MediaItem>()
 const previewY = shallowRef(8)
 
 watch(items, (list) => {
@@ -86,6 +118,13 @@ const rootRef = useSuperHover({
   },
 })
 
+function selectSubject(type: SubjectType) {
+  active.value = undefined
+  if (rootRef.value)
+    rootRef.value.scrollTop = 0
+  activeSubject.value = type
+}
+
 function scrollToSection(key: keyof Collections) {
   const root = rootRef.value
   const target = root?.querySelector<HTMLElement>(`#collection-${key}`)
@@ -94,27 +133,31 @@ function scrollToSection(key: keyof Collections) {
     root.scrollTo({ top: target.offsetTop - header.offsetHeight })
 }
 
-function displayTitle(a: AnimeItem) {
+function displayTitle(a: MediaItem) {
   return locale.value === 'zh' && a.titleCn ? a.titleCn : a.title
 }
 
-function sublabel(a: AnimeItem) {
+function sublabel(a: MediaItem) {
   return a.date ? a.date.slice(0, 4) : '—'
 }
 </script>
 
 <template>
   <div class="relative min-h-screen bg-white font-sans text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
-    <CoverBackdrop :items="items" :dark="isDark" />
+    <Transition name="backdrop-fade">
+      <CoverBackdrop :key="activeSubject" :items="items" :dark="isDark" />
+    </Transition>
 
     <main class="relative z-10 mx-auto max-w-5xl px-6 py-12 sm:py-16">
       <header class="mb-8 flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <img
-            src="https://kvoon.me/.netlify/images?q=70&url=%2Favatar_cropped.jpg"
-            alt="Kevin Kwong"
-            class="size-10 rounded-full ring-1 ring-black/10 dark:ring-white/10"
-          >
+          <a href="https://bgm.tv/user/1140496" aria-label="Kevin Kwong on Bangumi">
+            <img
+              src="https://kvoon.me/.netlify/images?q=70&url=%2Favatar_cropped.jpg"
+              alt="Kevin Kwong"
+              class="size-10 rounded-full ring-1 ring-black/10 dark:ring-white/10"
+            >
+          </a>
           <h1 class="text-xl font-medium tracking-tight" aria-label="Kevin Kwong is watching…">
             <span class="title-word" aria-hidden="true">Kevin Kwong</span>
             <span class="title-word ml-1" aria-hidden="true">is</span>
@@ -153,6 +196,22 @@ function sublabel(a: AnimeItem) {
       </p>
 
       <div v-else>
+        <nav class="mb-5 flex gap-1 overflow-x-auto" aria-label="Media types" role="tablist">
+          <button
+            v-for="tab in subjectTabs"
+            :key="tab.type"
+            type="button"
+            role="tab"
+            :aria-selected="activeSubject === tab.type"
+            :disabled="tab.count === 0"
+            class="shrink-0 rounded-full px-3 py-1.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-30"
+            :class="activeSubject === tab.type ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-100'"
+            @click="selectSubject(tab.type)"
+          >
+            {{ tab.label }} <span class="ml-1 tabular-nums opacity-60">{{ tab.count }}</span>
+          </button>
+        </nav>
+
         <TasteSummary :items="tasteItems" />
 
         <nav class="mb-3 flex flex-wrap gap-1" aria-label="Collection categories">
@@ -220,6 +279,16 @@ function sublabel(a: AnimeItem) {
 </template>
 
 <style scoped>
+.backdrop-fade-enter-active,
+.backdrop-fade-leave-active {
+  transition: opacity 280ms cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+.backdrop-fade-enter-from,
+.backdrop-fade-leave-to {
+  opacity: 0;
+}
+
 .title-word {
   display: inline-block;
   animation: title-word-in 240ms cubic-bezier(0.23, 1, 0.32, 1) both;
@@ -284,6 +353,11 @@ function sublabel(a: AnimeItem) {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .backdrop-fade-enter-active,
+  .backdrop-fade-leave-active {
+    transition-duration: 160ms;
+  }
+
   .title-word {
     animation: title-word-fade-in 160ms ease both;
   }

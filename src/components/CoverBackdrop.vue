@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import type { AnimeItem } from '../composables/useBangumi'
+import type { MediaItem } from '../composables/useBangumi'
 
 const props = defineProps<{
   dark: boolean
-  items: AnimeItem[]
+  items: MediaItem[]
 }>()
 
+const backdropItems = computed(() => props.items.length
+  ? Array.from({ length: Math.max(24, props.items.length) }, (_, index) => props.items[index % props.items.length])
+  : [])
 const columns = computed(() => Array.from({ length: 8 }, (_, column) =>
-  props.items.filter((_, index) => index % 8 === column),
+  backdropItems.value.filter((_, index) => index % 8 === column),
 ))
 </script>
 
@@ -24,8 +27,8 @@ const columns = computed(() => Array.from({ length: 8 }, (_, column) =>
       >
         <template v-for="copy in 2" :key="copy">
           <img
-            v-for="item in column"
-            :key="`${copy}-${item.id}`"
+            v-for="(item, itemIndex) in column"
+            :key="`${copy}-${itemIndex}-${item.id}`"
             :src="item.cover"
             alt=""
             loading="lazy"

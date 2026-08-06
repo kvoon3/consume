@@ -1,11 +1,14 @@
 import { onMounted, ref } from 'vue'
 
-export interface AnimeItem {
+export type SubjectType = 1 | 2 | 3 | 4 | 6
+
+export interface MediaItem {
   cover: string
   date: string
   id: number
   progress: number
   score: number
+  subjectType: SubjectType
   tags: string[]
   title: string
   titleCn: string
@@ -14,14 +17,15 @@ export interface AnimeItem {
 }
 
 export interface Collections {
-  completed: AnimeItem[]
-  dropped: AnimeItem[]
-  onHold: AnimeItem[]
-  watching: AnimeItem[]
-  wish: AnimeItem[]
+  completed: MediaItem[]
+  dropped: MediaItem[]
+  onHold: MediaItem[]
+  watching: MediaItem[]
+  wish: MediaItem[]
 }
 
 export const CATEGORY_KEYS = ['watching', 'wish', 'completed', 'onHold', 'dropped'] as const
+export const SUBJECT_TYPES: SubjectType[] = [2, 1, 3, 4, 6]
 
 export function useBangumi() {
   const collections = ref<Collections>()
