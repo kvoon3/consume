@@ -116,13 +116,13 @@ const columns = computed(() => Array.from({ length: 8 }, (_, column) =>
 }
 
 .cover-backdrop.is-dark .backdrop-columns {
-  opacity: 0.24;
-  filter: grayscale(0.7) saturate(0.45) brightness(0.62) contrast(1.18);
+  opacity: 0.34;
+  filter: grayscale(0.6) saturate(0.55) brightness(0.78) contrast(1.18);
   mix-blend-mode: luminosity;
 }
 
 .cover-backdrop.is-dark .backdrop-wash {
-  background: radial-gradient(ellipse at center, rgb(10 10 10 / 0.92), rgb(10 10 10 / 0.68));
+  background: radial-gradient(ellipse at center, rgb(10 10 10 / 0.82), rgb(10 10 10 / 0.58));
 }
 
 .cover-backdrop.is-dark .backdrop-dither {
