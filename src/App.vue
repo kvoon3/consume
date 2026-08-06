@@ -9,12 +9,23 @@ import { useSuperHover } from 'super-hover/vue'
 import type { Collections, MediaItem, SubjectType } from './composables/useBangumi'
 
 import CoverBackdrop from './components/CoverBackdrop.vue'
+import SpotifySection from './components/SpotifySection.vue'
 import TasteSummary from './components/TasteSummary.vue'
 import { CATEGORY_KEYS, SUBJECT_TYPES, useBangumi } from './composables/useBangumi'
+import { useNeoDB } from './composables/useNeoDB'
 import { useLocale } from './composables/useLocale'
 import { useTheme } from './composables/useTheme'
 
-const { collections, error, loading } = useBangumi()
+const { collections: bangumi, error, loading } = useBangumi()
+const { collections: neodb } = useNeoDB()
+const collections = computed<Collections | undefined>(() => {
+  if (!bangumi.value)
+    return undefined
+  const merged = { ...bangumi.value }
+  for (const key of ['watching', 'wish', 'completed', 'dropped'] as const)
+    merged[key] = [...merged[key], ...(neodb.value?.[key] ?? [])] as MediaItem[]
+  return merged
+})
 const { locale, t, toggle: toggleLocale } = useLocale()
 const { cycle, isDark, theme } = useTheme()
 
@@ -72,7 +83,7 @@ const sections = computed<Section[]>(() => {
     return []
   let offset = 0
   return CATEGORY_KEYS
-    .map(key => ({ key, label: t.value[key], list: c[key].filter(item => item.subjectType === activeSubject.value) }))
+    .map(key => ({ key, label: '', list: c[key].filter(item => item.subjectType === activeSubject.value) }))
     .filter(s => s.list.length > 0)
     .map((s) => {
       const withOffset = { ...s, offset }
@@ -143,12 +154,49 @@ function scrollToSection(key: keyof Collections) {
   }
 }
 
+function sectionLabel(key: keyof Collections) {
+  const labels = t.value.subjectLabels as Record<number, Partial<Record<keyof Collections, string>>>
+  return labels[activeSubject.value]?.[key] ?? t.value[key]
+}
+
 function displayTitle(a: MediaItem) {
   return locale.value === 'zh' && a.titleCn ? a.titleCn : a.title
 }
 
 function sublabel(a: MediaItem) {
   return a.date ? a.date.slice(0, 4) : '—'
+}
+
+type DetailColumn = 'creator' | 'year' | 'progress' | 'score'
+const COLUMN_WIDTHS: Record<DetailColumn, number> = { creator: 10, progress: 4.5, score: 3, year: 4 }
+const SUBJECT_COLUMNS: Record<SubjectType, DetailColumn[]> = {
+  1: ['creator', 'year', 'progress', 'score'],
+  2: ['creator', 'year', 'progress', 'score'],
+  3: ['creator', 'year', 'score'],
+  4: ['creator', 'year', 'score'],
+  6: ['year', 'progress', 'score'],
+}
+const columns = computed(() => SUBJECT_COLUMNS[activeSubject.value])
+const gridStyle = computed(() => ({
+  '--cols': `minmax(0, 1fr) 13rem ${columns.value.map(c => `${COLUMN_WIDTHS[c]}rem`).join(' ')}`,
+}))
+// rem width of the detail area + gaps + row padding, used to place the preview card
+const detailWidth = computed(() =>
+  columns.value.reduce((w, c) => w + COLUMN_WIDTHS[c], 0) + columns.value.length * 0.5 + 1.25,
+)
+
+function columnHeader(col: DetailColumn) {
+  return { creator: t.value.creator, progress: t.value.progress, score: t.value.rating, year: t.value.aired }[col]
+}
+
+function columnValue(a: MediaItem, col: DetailColumn) {
+  if (col === 'creator')
+    return a.creator || '—'
+  if (col === 'year')
+    return sublabel(a)
+  if (col === 'score')
+    return a.score || '—'
+  return a.total ? `${a.progress}/${a.total}` : `${a.progress} ${t.value.eps}`
 }
 </script>
 
@@ -233,7 +281,7 @@ function sublabel(a: MediaItem) {
             :class="{ 'is-highlighted': highlightedSection === s.key }"
             @click.prevent="scrollToSection(s.key)"
           >
-            {{ s.label }} <span class="text-neutral-400 tabular-nums">{{ s.list.length }}</span>
+            {{ sectionLabel(s.key) }} <span class="text-neutral-400 tabular-nums">{{ s.list.length }}</span>
           </a>
         </nav>
 
@@ -241,12 +289,10 @@ function sublabel(a: MediaItem) {
           ref="rootRef"
           class="collection-list relative h-[min(60vh,32rem)] min-h-80 overflow-y-auto overscroll-contain rounded-xl border border-neutral-200 dark:border-neutral-800"
         >
-          <div class="list-grid sticky top-0 z-20 border-b border-neutral-200 bg-white/95 px-3 py-1.5 text-[10px] tracking-widest text-neutral-400 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
+          <div class="list-grid sticky top-0 z-20 border-b border-neutral-200 bg-white/95 px-3 py-1.5 text-[10px] tracking-widest text-neutral-400 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95" :style="gridStyle">
             <span>{{ t.title }}</span>
             <span class="preview-column" />
-            <span class="detail-column">{{ t.aired }}</span>
-            <span class="detail-column">{{ t.progress }}</span>
-            <span class="text-right">{{ t.rating }}</span>
+            <span v-for="col in columns" :key="col" class="detail-column" :class="{ 'text-right': col === 'score' }">{{ columnHeader(col) }}</span>
           </div>
 
           <section v-for="s in sections" :id="`collection-${s.key}`" :key="s.key">
@@ -254,7 +300,7 @@ function sublabel(a: MediaItem) {
               class="section-heading sticky top-[27px] z-10 border-b border-neutral-200 bg-neutral-50/95 px-3 py-1 text-[10px] font-medium tracking-widest text-neutral-500 backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95 dark:text-neutral-400"
               :class="{ 'is-highlighted': highlightedSection === s.key }"
             >
-              {{ s.label }} · {{ s.list.length }}
+              {{ sectionLabel(s.key) }} · {{ s.list.length }}
             </h2>
             <a
               v-for="(a, i) in s.list"
@@ -265,12 +311,11 @@ function sublabel(a: MediaItem) {
               data-super-hover
               :data-index="s.offset + i"
               class="list-grid border-b border-neutral-100 px-3 py-1 text-xs outline-none transition-colors last:border-b-0 hover:bg-neutral-50 focus-visible:bg-neutral-50 dark:border-neutral-900 dark:hover:bg-neutral-900/60 dark:focus-visible:bg-neutral-900/60"
+              :style="gridStyle"
             >
               <span class="truncate text-sm">{{ displayTitle(a) }}</span>
               <span class="preview-column" />
-              <span class="detail-column text-neutral-400 tabular-nums">{{ sublabel(a) }}</span>
-              <span class="detail-column text-neutral-400 tabular-nums">{{ a.total ? `${a.progress}/${a.total}` : `${a.progress} ${t.eps}` }}</span>
-              <span class="text-right text-amber-500 tabular-nums">{{ a.score || '—' }}</span>
+              <span v-for="col in columns" :key="col" class="detail-column tabular-nums" :class="[col === 'score' ? 'text-right text-amber-500' : 'text-neutral-400', col === 'creator' ? 'truncate' : '']">{{ columnValue(a, col) }}</span>
             </a>
           </section>
 
@@ -280,11 +325,12 @@ function sublabel(a: MediaItem) {
             :src="active.cover"
             :alt="displayTitle(active)"
             class="preview-card pointer-events-none absolute z-30 hidden h-28 w-20 rounded object-cover shadow-xl ring-1 ring-black/10 sm:block dark:ring-white/10"
-            :style="{ transform: `translateY(${previewY}px)` }"
+            :style="{ transform: `translateY(${previewY}px)`, right: `${detailWidth}rem` }"
           >
         </div>
       </div>
 
+      <SpotifySection />
     </main>
   </div>
 </template>
@@ -345,7 +391,7 @@ function sublabel(a: MediaItem) {
 
 .list-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 13rem 4rem 4.5rem 3rem;
+  grid-template-columns: var(--cols);
   align-items: center;
   gap: 0.5rem;
 }
@@ -356,7 +402,6 @@ function sublabel(a: MediaItem) {
 
 .preview-card {
   top: 0;
-  right: 17.75rem;
 }
 
 .category-link,

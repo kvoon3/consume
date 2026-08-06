@@ -4,8 +4,9 @@ export type SubjectType = 1 | 2 | 3 | 4 | 6
 
 export interface MediaItem {
   cover: string
+  creator?: string
   date: string
-  id: number
+  id: number | string
   progress: number
   score: number
   subjectType: SubjectType
