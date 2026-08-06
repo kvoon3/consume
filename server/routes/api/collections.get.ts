@@ -31,7 +31,7 @@ interface CollectionEntry {
   updated_at: string
 }
 
-async function fetchCollections() {
+async function fetchCollections(subjectType: number) {
   const data: CollectionEntry[] = []
 
   while (true) {
@@ -39,6 +39,7 @@ async function fetchCollections() {
     url.search = new URLSearchParams({
       limit: String(PAGE_SIZE),
       offset: String(data.length),
+      subject_type: String(subjectType),
     }).toString()
 
     const headers: Record<string, string> = {
@@ -58,8 +59,12 @@ async function fetchCollections() {
   }
 }
 
-export default defineCachedHandler(async () => {
-  const data = await fetchCollections()
+export default defineCachedHandler(async (event) => {
+  const subjectType = Number(new URL(event.req.url).searchParams.get('subject_type'))
+  if (![1, 2, 3, 4, 6].includes(subjectType))
+    throw new Error('Invalid subject_type')
+
+  const data = await fetchCollections(subjectType)
   return Object.fromEntries(
     Object.entries(CATEGORIES).map(([key, type]) => [
       key,
@@ -82,7 +87,7 @@ export default defineCachedHandler(async () => {
     ]),
   )
 }, {
-  name: 'collections-v2',
+  name: 'collections-v3',
   maxAge: 300,
   swr: true,
 })

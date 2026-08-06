@@ -1,4 +1,6 @@
-import { onMounted, ref } from 'vue'
+import type { Ref } from 'vue'
+
+import { ref, watch } from 'vue'
 
 export interface SpotifyArtist {
   cover: string
@@ -22,12 +24,16 @@ export interface SpotifyData {
   topTracks: SpotifyTrack[]
 }
 
-export function useSpotify() {
+export function useSpotify(enabled: Ref<boolean>) {
   const data = ref<SpotifyData>()
   const error = ref('')
-  const loading = ref(true)
+  const loading = ref(false)
 
-  onMounted(async () => {
+  watch(enabled, async (shouldLoad) => {
+    if (!shouldLoad || data.value)
+      return
+
+    loading.value = true
     try {
       const res = await fetch('/api/spotify')
       if (!res.ok)
@@ -40,7 +46,7 @@ export function useSpotify() {
     finally {
       loading.value = false
     }
-  })
+  }, { immediate: true })
 
   return { data, error, loading }
 }

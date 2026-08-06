@@ -1,4 +1,6 @@
-import { onMounted, ref } from 'vue'
+import type { Ref } from 'vue'
+
+import { ref, watch } from 'vue'
 
 import type { SubjectType } from './useBangumi'
 
@@ -19,12 +21,16 @@ export interface NeoCollections {
   wish: NeoItem[]
 }
 
-export function useNeoDB() {
+export function useNeoDB(subjectType: Ref<SubjectType>) {
   const collections = ref<NeoCollections>()
   const error = ref('')
-  const loading = ref(true)
+  const loading = ref(false)
 
-  onMounted(async () => {
+  watch(subjectType, async (type) => {
+    if (type === 2 || collections.value)
+      return
+
+    loading.value = true
     try {
       const res = await fetch('/api/neodb')
       if (!res.ok)
@@ -37,7 +43,7 @@ export function useNeoDB() {
     finally {
       loading.value = false
     }
-  })
+  }, { immediate: true })
 
   return { collections, error, loading }
 }

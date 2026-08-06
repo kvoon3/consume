@@ -15,16 +15,6 @@ import { useNeoDB } from './composables/useNeoDB'
 import { useLocale } from './composables/useLocale'
 import { useTheme } from './composables/useTheme'
 
-const { collections: bangumi, error, loading } = useBangumi()
-const { collections: neodb } = useNeoDB()
-const collections = computed<Collections | undefined>(() => {
-  if (!bangumi.value)
-    return undefined
-  const merged = { ...bangumi.value }
-  for (const key of ['watching', 'wish', 'completed', 'dropped'] as const)
-    merged[key] = [...merged[key], ...(neodb.value?.[key] ?? [])] as MediaItem[]
-  return merged
-})
 const { locale, t, toggle: setLocale } = useLocale()
 const { cycle, isDark, theme } = useTheme()
 
@@ -70,6 +60,16 @@ const activeSubject = computed<SubjectType>({
   get: () => SUBJECT_TYPES.find(type => subjectSlugs[type] === params.type) ?? 2,
   set: type => params.type = subjectSlugs[type],
 })
+const { collections: bangumi, error, loading } = useBangumi(activeSubject)
+const { collections: neodb } = useNeoDB(activeSubject)
+const collections = computed<Collections | undefined>(() => {
+  if (!bangumi.value)
+    return undefined
+  const merged = { ...bangumi.value }
+  for (const key of ['watching', 'wish', 'completed', 'dropped'] as const)
+    merged[key] = [...merged[key], ...(neodb.value?.[key] ?? [])] as MediaItem[]
+  return merged
+})
 
 const subjectLabels = computed<Record<SubjectType, string>>(() => ({
   1: t.value.book,
@@ -81,9 +81,6 @@ const subjectLabels = computed<Record<SubjectType, string>>(() => ({
 }))
 
 const subjectTabs = computed(() => SUBJECT_TYPES.map(type => ({
-  count: collections.value
-    ? CATEGORY_KEYS.reduce((count, key) => count + collections.value![key].filter(item => item.subjectType === type).length, 0)
-    : 0,
   label: subjectLabels.value[type],
   type,
 })))
@@ -176,7 +173,7 @@ function scrollToSection(key: keyof Collections) {
 }
 
 function sectionLabel(key: keyof Collections) {
-  const labels = t.value.subjectLabels as Record<number, Partial<Record<keyof Collections, string>>>
+  const labels = t.value.subjectLabels as Partial<Record<SubjectType, Partial<Record<keyof Collections, string>>>>
   return labels[activeSubject.value]?.[key] ?? t.value[key]
 }
 
@@ -188,15 +185,15 @@ function sublabel(a: MediaItem) {
   return a.date ? a.date.slice(0, 4) : '—'
 }
 
-type DetailColumn = 'year' | 'progress' | 'score'
-const COLUMN_WIDTHS: Record<DetailColumn, number> = { progress: 4.5, score: 3, year: 4 }
+type DetailColumn = 'creator' | 'year' | 'progress' | 'score'
+const COLUMN_WIDTHS: Record<DetailColumn, number> = { creator: 10, progress: 4.5, score: 3, year: 4 }
 const SUBJECT_COLUMNS: Record<SubjectType, DetailColumn[]> = {
   1: ['year', 'progress', 'score'],
   2: ['year', 'progress', 'score'],
   3: ['year', 'score'],
   4: ['year', 'score'],
   6: ['year', 'progress', 'score'],
-  podcast: ['year', 'score'],
+  podcast: ['creator', 'score'],
 }
 const columns = computed(() => SUBJECT_COLUMNS[activeSubject.value])
 const gridStyle = computed(() => ({
@@ -208,7 +205,7 @@ const detailWidth = computed(() =>
 )
 
 function columnHeader(col: DetailColumn) {
-  return { progress: t.value.progress, score: t.value.rating, year: t.value.aired }[col]
+  return { creator: t.value.creator, progress: t.value.progress, score: t.value.rating, year: t.value.aired }[col]
 }
 
 function columnValue(a: MediaItem, col: DetailColumn) {
@@ -216,6 +213,8 @@ function columnValue(a: MediaItem, col: DetailColumn) {
     return sublabel(a)
   if (col === 'score')
     return a.score || '—'
+  if (col === 'creator')
+    return a.creator || '—'
   return a.total ? `${a.progress}/${a.total}` : `${a.progress} ${t.value.eps}`
 }
 </script>
@@ -266,43 +265,30 @@ function columnValue(a: MediaItem, col: DetailColumn) {
         </nav>
       </header>
 
-      <div v-if="loading" role="status" aria-label="Loading collections" class="animate-pulse motion-reduce:animate-none">
-        <div class="mb-5 flex gap-2">
-          <span v-for="i in 5" :key="i" class="h-7 rounded-full bg-neutral-200 dark:bg-neutral-800" :class="i === 1 ? 'w-20' : 'w-16'" />
-        </div>
-        <div class="mb-5 h-10 rounded-xl border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900" />
-        <div class="mb-3 flex gap-2">
-          <span v-for="i in 3" :key="i" class="h-7 w-20 rounded-full bg-neutral-200 dark:bg-neutral-800" />
-        </div>
-        <div class="h-[min(60vh,32rem)] min-h-80 overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800">
-          <div class="h-7 border-b border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900" />
-          <div v-for="i in 10" :key="i" class="flex h-8 items-center border-b border-neutral-100 px-3 dark:border-neutral-900">
-            <span class="h-3 rounded bg-neutral-200 dark:bg-neutral-800" :style="{ width: `${35 + (i % 4) * 10}%` }" />
-          </div>
-        </div>
-        <span class="sr-only">Loading…</span>
+      <nav class="mb-5 flex gap-1 overflow-x-auto" aria-label="Media types" role="tablist">
+        <button
+          v-for="tab in subjectTabs"
+          :key="tab.type"
+          type="button"
+          role="tab"
+          :aria-selected="activeSubject === tab.type"
+          class="shrink-0 rounded-full px-3 py-1.5 text-xs transition-colors"
+          :class="activeSubject === tab.type ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-100'"
+          @click="tabSound(); selectSubject(tab.type)"
+        >
+          {{ tab.label }}
+        </button>
+      </nav>
+
+      <div v-if="loading" role="status" class="flex h-[min(60vh,32rem)] min-h-80 items-center justify-center rounded-xl border border-neutral-200 text-neutral-400 dark:border-neutral-800">
+        <span class="size-4 animate-spin rounded-full border-2 border-current border-r-transparent motion-reduce:animate-none" />
+        <span class="sr-only">Loading collections…</span>
       </div>
       <p v-else-if="error" class="text-sm text-red-500">
         {{ error }}
       </p>
 
       <div v-else>
-        <nav class="mb-5 flex gap-1 overflow-x-auto" aria-label="Media types" role="tablist">
-          <button
-            v-for="tab in subjectTabs"
-            :key="tab.type"
-            type="button"
-            role="tab"
-            :aria-selected="activeSubject === tab.type"
-            :disabled="tab.count === 0"
-            class="shrink-0 rounded-full px-3 py-1.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-30"
-            :class="activeSubject === tab.type ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-100'"
-            @click="tabSound(); selectSubject(tab.type)"
-          >
-            {{ tab.label }} <span class="ml-1 tabular-nums opacity-60">{{ tab.count }}</span>
-          </button>
-        </nav>
-
         <TasteSummary :items="tasteItems" :spotify-visible="activeSubject === 3" />
 
         <nav class="mb-3 flex flex-wrap gap-1" aria-label="Collection categories">

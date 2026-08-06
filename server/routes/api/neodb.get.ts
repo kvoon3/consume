@@ -28,6 +28,7 @@ interface MarkEntry {
     title: string
     localized_title?: { lang: string, text: string }[]
     cover_image_url: string | null
+    pub_year?: number | string
     tags?: string[] | null
     url: string
     category: string
@@ -75,8 +76,8 @@ export default defineCachedHandler(async () => {
           .sort((a, b) => (b.rating_grade || 0) - (a.rating_grade || 0) || b.created_time.localeCompare(a.created_time))
           .map(mark => ({
             cover: mark.item.cover_image_url ?? '',
-            creator: mark.item.credits?.find(c => c.role === 'artist')?.name ?? '',
-            date: '',
+            creator: mark.item.credits?.find(c => ['artist', 'host', 'developer', 'director'].includes(c.role))?.name ?? '',
+            date: String(mark.item.pub_year ?? ''),
             id: mark.item.uuid,
             progress: 0, // ponytail: progress lives in per-item logs, add when needed
             score: mark.rating_grade ?? 0,
@@ -91,7 +92,7 @@ export default defineCachedHandler(async () => {
     ),
   )
 }, {
-  name: 'neodb-v2',
+  name: 'neodb-v3',
   maxAge: 300,
   swr: true,
 })

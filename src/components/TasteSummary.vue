@@ -14,8 +14,10 @@ const props = defineProps<{
 }>()
 
 const { t } = useLocale()
-const { data: spotify } = useSpotify()
+const spotifyEnabled = computed(() => Boolean(props.spotifyVisible))
+const { data: spotify } = useSpotify(spotifyEnabled)
 const selectedTrack = shallowRef<SpotifyTrack>()
+const playerCollapsed = shallowRef(false)
 const clickSound = defineSound({
   source: { type: 'triangle', frequency: { start: 560, end: 360 } },
   envelope: { decay: 0.045 },
@@ -127,7 +129,7 @@ const maxTag = computed(() => Math.max(...tags.value.map(item => item.count), 1)
           type="button"
           class="taste-row flex w-full items-center gap-3 rounded px-1 py-1 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900/60"
           :style="{ '--delay': `${index * 30}ms` }"
-          @click="clickSound(); selectedTrack = track"
+          @click="clickSound(); selectedTrack = track; playerCollapsed = false"
         >
           <img :src="track.cover" :alt="track.title" class="size-7 rounded object-cover" loading="lazy">
           <span class="min-w-0 flex-1 truncate text-xs">{{ track.title }}</span>
@@ -159,7 +161,20 @@ const maxTag = computed(() => Math.max(...tags.value.map(item => item.count), 1)
   </details>
 
   <Transition name="player-pop">
-    <div v-if="embedUrl" class="spotify-player fixed bottom-2 right-2 z-50 w-[min(calc(100vw-1rem),14rem)] sm:right-4 sm:w-[18rem]">
+    <div
+      v-if="embedUrl"
+      class="spotify-player fixed bottom-2 right-2 z-50 w-[min(calc(100vw-3rem),22rem)] sm:right-4"
+      :class="{ 'is-collapsed': playerCollapsed }"
+    >
+      <button
+        type="button"
+        class="player-collapse absolute -left-4 top-4 z-10 flex h-12 w-4 items-center justify-center rounded-l-lg border border-r-0 border-neutral-200 bg-white/90 text-sm text-neutral-500 shadow-md backdrop-blur transition-colors hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900/90 dark:text-neutral-400 dark:hover:text-white"
+        :aria-label="playerCollapsed ? 'Expand Spotify player' : 'Collapse Spotify player'"
+        :aria-expanded="!playerCollapsed"
+        @click="clickSound(); playerCollapsed = !playerCollapsed"
+      >
+        {{ playerCollapsed ? '‹' : '›' }}
+      </button>
       <button
         type="button"
         class="absolute -right-2 -top-2 z-10 flex size-6 items-center justify-center rounded-full border border-neutral-200 bg-white text-sm text-neutral-500 shadow-md transition-colors hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:text-white"
@@ -185,11 +200,27 @@ details {
 
 .spotify-player {
   bottom: max(0.5rem, env(safe-area-inset-bottom));
+  transition: transform 240ms cubic-bezier(0.77, 0, 0.175, 1);
+  will-change: transform;
+}
+
+.spotify-player.is-collapsed {
+  transform: translateX(calc(100% + 0.5rem));
+}
+
+.player-collapse::before {
+  position: absolute;
+  inset: -0.5rem -0.75rem;
+  content: '';
 }
 
 @media (min-width: 640px) {
   .spotify-player {
     bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .spotify-player.is-collapsed {
+    transform: translateX(calc(100% + 1rem));
   }
 }
 
@@ -261,6 +292,10 @@ details[open] .taste-bar {
   .player-pop-enter-from,
   .player-pop-leave-to {
     transform: none;
+  }
+
+  .spotify-player {
+    transition: none;
   }
 }
 

@@ -1,4 +1,6 @@
-import { onMounted, ref } from 'vue'
+import type { Ref } from 'vue'
+
+import { ref, watch } from 'vue'
 
 export type SubjectType = 1 | 2 | 3 | 4 | 6 | 'podcast'
 
@@ -28,23 +30,48 @@ export interface Collections {
 export const CATEGORY_KEYS = ['watching', 'wish', 'completed', 'onHold', 'dropped'] as const
 export const SUBJECT_TYPES: SubjectType[] = [2, 1, 3, 'podcast', 4, 6]
 
-export function useBangumi() {
+const emptyCollections = (): Collections => ({ completed: [], dropped: [], onHold: [], watching: [], wish: [] })
+
+export function useBangumi(subjectType: Ref<SubjectType>) {
   const collections = ref<Collections>()
   const loading = ref(true)
   const error = ref('')
+  const cache = new Map<SubjectType, Collections>()
 
-  onMounted(async () => {
+  watch(subjectType, async (type, _previous, onCleanup) => {
+    error.value = ''
+    const cached = cache.get(type)
+    if (cached) {
+      collections.value = cached
+      loading.value = false
+      return
+    }
+    if (typeof type !== 'number') {
+      collections.value = emptyCollections()
+      loading.value = false
+      return
+    }
+
+    const controller = new AbortController()
+    onCleanup(() => controller.abort())
+    loading.value = true
     try {
-      const res = await fetch('/api/collections')
+      const res = await fetch(`/api/collections?subject_type=${type}`, { signal: controller.signal })
       if (!res.ok)
         throw new Error(`API ${res.status}`)
-      collections.value = await res.json() as Collections
-    } catch (e) {
-      error.value = e instanceof Error ? e.message : String(e)
-    } finally {
-      loading.value = false
+      const data = await res.json() as Collections
+      cache.set(type, data)
+      collections.value = data
     }
-  })
+    catch (e) {
+      if (!controller.signal.aborted)
+        error.value = e instanceof Error ? e.message : String(e)
+    }
+    finally {
+      if (!controller.signal.aborted)
+        loading.value = false
+    }
+  }, { immediate: true })
 
   return { collections, error, loading }
 }
