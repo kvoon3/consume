@@ -5,3 +5,18 @@
 :root.dark {
   color-scheme: dark;
 }
+
+.theme-surface,
+.theme-surface *::before,
+.theme-surface *::after,
+.theme-surface * {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 480ms;
+  transition-timing-function: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+/* Keep the control and its morphing icon out of the global theme transition to prevent a double flash on toggle. */
+.theme-surface .theme-toggle,
+.theme-surface .theme-toggle * {
+  transition: none;
+}
