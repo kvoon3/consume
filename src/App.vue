@@ -1,6 +1,6 @@
 <script setup lang="ts" vapor>
 import { defineSound } from '@web-kits/audio'
-import { useUrlSearchParams } from '@vueuse/core'
+import { useTimeoutFn, useUrlSearchParams } from '@vueuse/core'
 import { Languages, Library, Monitor, Moon, Sun } from 'lucide'
 import { MorphIcon } from 'morphicons/vue'
 import { computed, shallowRef, watch } from 'vue'
@@ -86,7 +86,11 @@ const tasteItems = computed(() => collections.value
   ? [...collections.value.watching, ...collections.value.completed].filter(item => item.subjectType === activeSubject.value)
   : [])
 const active = shallowRef<MediaItem>()
+const highlightedSection = shallowRef<keyof Collections>()
 const previewY = shallowRef(8)
+const { start: startHighlightTimeout, stop: stopHighlightTimeout } = useTimeoutFn(() => {
+  highlightedSection.value = undefined
+}, 1000, { immediate: false })
 
 watch(items, (list) => {
   for (const item of list.slice(0, 30))
@@ -120,6 +124,8 @@ const rootRef = useSuperHover({
 
 function selectSubject(type: SubjectType) {
   active.value = undefined
+  stopHighlightTimeout()
+  highlightedSection.value = undefined
   if (rootRef.value)
     rootRef.value.scrollTop = 0
   activeSubject.value = type
@@ -129,8 +135,12 @@ function scrollToSection(key: keyof Collections) {
   const root = rootRef.value
   const target = root?.querySelector<HTMLElement>(`#collection-${key}`)
   const header = root?.querySelector<HTMLElement>('.list-grid')
-  if (root && target && header)
+  if (root && target && header) {
     root.scrollTo({ top: target.offsetTop - header.offsetHeight })
+    stopHighlightTimeout()
+    highlightedSection.value = key
+    startHighlightTimeout()
+  }
 }
 
 function displayTitle(a: MediaItem) {
@@ -219,7 +229,8 @@ function sublabel(a: MediaItem) {
             v-for="s in sections"
             :key="s.key"
             :href="`#collection-${s.key}`"
-            class="rounded-full px-3 py-1.5 text-xs text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-100"
+            class="category-link rounded-full px-3 py-1.5 text-xs text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-100"
+            :class="{ 'is-highlighted': highlightedSection === s.key }"
             @click.prevent="scrollToSection(s.key)"
           >
             {{ s.label }} <span class="text-neutral-400 tabular-nums">{{ s.list.length }}</span>
@@ -240,7 +251,8 @@ function sublabel(a: MediaItem) {
 
           <section v-for="s in sections" :id="`collection-${s.key}`" :key="s.key">
             <h2
-              class="sticky top-[27px] z-10 border-b border-neutral-200 bg-neutral-50/95 px-3 py-1 text-[10px] font-medium tracking-widest text-neutral-500 backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95 dark:text-neutral-400"
+              class="section-heading sticky top-[27px] z-10 border-b border-neutral-200 bg-neutral-50/95 px-3 py-1 text-[10px] font-medium tracking-widest text-neutral-500 backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95 dark:text-neutral-400"
+              :class="{ 'is-highlighted': highlightedSection === s.key }"
             >
               {{ s.label }} · {{ s.list.length }}
             </h2>
@@ -262,7 +274,6 @@ function sublabel(a: MediaItem) {
             </a>
           </section>
 
-          <div class="anchor-space" aria-hidden="true" />
 
           <img
             v-if="active"
@@ -348,8 +359,29 @@ function sublabel(a: MediaItem) {
   right: 17.75rem;
 }
 
-.anchor-space {
-  height: calc(100% + 4rem);
+.category-link,
+.section-heading {
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.category-link.is-highlighted {
+  background: rgb(229 229 229);
+  color: rgb(23 23 23);
+}
+
+.section-heading.is-highlighted {
+  background: rgb(229 229 229 / 0.95);
+  color: rgb(23 23 23);
+}
+
+:global(.dark) .category-link.is-highlighted {
+  background: rgb(38 38 38);
+  color: rgb(245 245 245);
+}
+
+:global(.dark) .section-heading.is-highlighted {
+  background: rgb(38 38 38 / 0.95);
+  color: rgb(245 245 245);
 }
 
 @media (prefers-reduced-motion: reduce) {
