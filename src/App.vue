@@ -304,10 +304,11 @@ function columnValue(a: MediaItem, col: DetailColumn) {
           </a>
         </nav>
 
-        <div
-          ref="rootRef"
-          class="collection-list relative h-[min(60vh,32rem)] min-h-80 overflow-y-auto overscroll-contain rounded-xl border border-neutral-200 dark:border-neutral-800"
-        >
+        <div class="h-[min(60vh,32rem)] min-h-80 overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800">
+          <div
+            ref="rootRef"
+            class="collection-list scroll-fade-b relative h-full overflow-y-auto overscroll-contain"
+          >
           <div class="list-grid sticky top-0 z-20 border-b border-neutral-200 bg-white/95 px-3 py-1.5 text-[10px] tracking-widest text-neutral-400 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95" :style="gridStyle">
             <span>{{ t.title }}</span>
             <span class="preview-column" />
@@ -351,6 +352,7 @@ function columnValue(a: MediaItem, col: DetailColumn) {
             <span class="mac-brand absolute bottom-2.5 left-3 size-2 rounded-sm" aria-hidden="true" />
             <span class="mac-slot absolute bottom-3 right-3 h-0.5 w-9 rounded-full" aria-hidden="true" />
           </div>
+        </div>
         </div>
       </div>
 
@@ -417,6 +419,44 @@ function columnValue(a: MediaItem, col: DetailColumn) {
   grid-template-columns: var(--cols);
   align-items: center;
   gap: 0.5rem;
+}
+
+@property --scroll-fade-b {
+  syntax: '<length-percentage>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@keyframes scroll-fade-reveal-b {
+  from {
+    --scroll-fade-b: min(12%, 2.5rem);
+  }
+
+  to {
+    --scroll-fade-b: 0px;
+  }
+}
+
+.scroll-fade-b {
+  --scroll-fade-size: min(12%, 2.5rem);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - var(--scroll-fade-b, 0px)), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - var(--scroll-fade-b, 0px)), transparent 100%);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+@supports (animation-timeline: scroll()) {
+  .scroll-fade-b {
+    animation: scroll-fade-reveal-b 1ms ease-in-out both;
+    animation-range: calc(100% - 6rem) 100%;
+    animation-timeline: scroll(self y);
+  }
+}
+
+@supports not (animation-timeline: scroll()) {
+  .scroll-fade-b {
+    --scroll-fade-b: var(--scroll-fade-size);
+  }
 }
 
 .collection-list {
