@@ -24,7 +24,7 @@ export default defineConfig({
         deployConfig: true,
         nodeCompat: true,
         wrangler: {
-          name: 'watch',
+          name: 'consume',
           compatibility_flags: ['nodejs_compat', 'nodejs_compat_populate_process_env'],
         },
       },

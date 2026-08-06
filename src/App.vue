@@ -242,10 +242,10 @@ function columnValue(a: MediaItem, col: DetailColumn) {
               class="size-10 shrink-0 rounded-full ring-1 ring-black/10 dark:ring-white/10"
             >
           </a>
-          <h1 class="hidden min-w-0 truncate text-xl font-medium tracking-tight sm:block" aria-label="Kevin Kwong is watching…">
+          <h1 class="hidden min-w-0 truncate text-xl font-medium tracking-tight sm:block" aria-label="Kevin Kwong is consuming…">
             <span class="title-word inline-block" aria-hidden="true">Kevin Kwong</span>
             <span class="title-word ml-1 hidden sm:inline-block" aria-hidden="true">is</span>
-            <span class="title-word ml-1 hidden sm:inline-block" aria-hidden="true">watching<span class="title-dot">.</span><span class="title-dot">.</span><span class="title-dot">.</span></span>
+            <span class="title-word ml-1 hidden sm:inline-block" aria-hidden="true">consuming<span class="title-dot">.</span><span class="title-dot">.</span><span class="title-dot">.</span></span>
           </h1>
           <a v-if="titleCover" :href="titleCover.url" target="_blank" rel="noopener" class="hidden shrink-0 sm:block" :title="displayTitle(titleCover)">
             <RetroCover :item="titleCover" compact class="relative h-14 w-11" />
