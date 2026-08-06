@@ -1,6 +1,6 @@
 <script setup lang="ts" vapor>
 import { defineSound } from '@web-kits/audio'
-import { useTimeoutFn, useUrlSearchParams } from '@vueuse/core'
+import { useIntervalFn, useTimeoutFn, useUrlSearchParams } from '@vueuse/core'
 import { Languages, Library, Monitor, Moon, Sun } from 'lucide'
 import { MorphIcon } from 'morphicons/vue'
 import { computed, shallowRef, watch } from 'vue'
@@ -9,6 +9,7 @@ import { useSuperHover } from 'super-hover/vue'
 import type { Collections, MediaItem, SubjectType } from './composables/useBangumi'
 
 import CoverBackdrop from './components/CoverBackdrop.vue'
+import RetroCover from './components/RetroCover.vue'
 import TasteSummary from './components/TasteSummary.vue'
 import { CATEGORY_KEYS, SUBJECT_TYPES, useBangumi } from './composables/useBangumi'
 import { useNeoDB } from './composables/useNeoDB'
@@ -101,6 +102,12 @@ const sections = computed<Section[]>(() => {
 })
 
 const items = computed(() => sections.value.flatMap(s => s.list))
+const watchingItems = computed(() => collections.value?.watching.filter(item => item.subjectType === activeSubject.value) ?? [])
+const titleCoverIndex = shallowRef(0)
+const titleCover = computed(() => watchingItems.value[titleCoverIndex.value % watchingItems.value.length])
+useIntervalFn(() => titleCoverIndex.value++, 5000)
+watch(watchingItems, () => titleCoverIndex.value = 0)
+
 const tasteItems = computed(() => collections.value
   ? [...collections.value.watching, ...collections.value.completed].filter(item => item.subjectType === activeSubject.value)
   : [])
@@ -240,6 +247,9 @@ function columnValue(a: MediaItem, col: DetailColumn) {
             <span class="title-word ml-1 hidden sm:inline-block" aria-hidden="true">is</span>
             <span class="title-word ml-1 hidden sm:inline-block" aria-hidden="true">watching<span class="title-dot">.</span><span class="title-dot">.</span><span class="title-dot">.</span></span>
           </h1>
+          <a v-if="titleCover" :href="titleCover.url" target="_blank" rel="noopener" class="hidden shrink-0 sm:block" :title="displayTitle(titleCover)">
+            <RetroCover :item="titleCover" compact class="relative h-14 w-11" />
+          </a>
         </div>
         <nav class="flex shrink-0 items-center gap-2 text-neutral-400 sm:gap-3" aria-label="Site links">
           <a href="https://bgm.tv/user/1140496" target="_blank" rel="noopener" aria-label="Bangumi" title="Bangumi" class="transition-colors hover:text-neutral-900 dark:hover:text-neutral-100">
@@ -340,18 +350,13 @@ function columnValue(a: MediaItem, col: DetailColumn) {
           </section>
 
 
-          <div
+          <RetroCover
             v-if="active"
-            class="preview-card crt-cover pointer-events-none absolute z-30 hidden h-36 w-28 p-2.5 pb-8 shadow-xl sm:block"
+            :item="active"
+            :transition="false"
+            class="preview-card pointer-events-none absolute z-30 hidden h-36 w-28 shadow-xl sm:block"
             :style="{ transform: `translateY(${previewY}px)`, right: `${detailWidth}rem` }"
-          >
-            <div class="crt-screen relative h-full overflow-hidden">
-              <img :src="active.cover" :alt="displayTitle(active)" class="crt-image absolute inset-0 size-full object-cover">
-              <span class="crt-scanlines absolute inset-0" aria-hidden="true" />
-            </div>
-            <span class="mac-brand absolute bottom-2.5 left-3 size-2 rounded-sm" aria-hidden="true" />
-            <span class="mac-slot absolute bottom-3 right-3 h-0.5 w-9 rounded-full" aria-hidden="true" />
-          </div>
+          />
         </div>
         </div>
       </div>
@@ -482,114 +487,6 @@ function columnValue(a: MediaItem, col: DetailColumn) {
 
 .preview-card {
   top: 0;
-}
-
-.crt-cover {
-  border: 1px solid rgb(212 212 212);
-  border-radius: 0.7rem 0.7rem 0.45rem 0.45rem;
-  background:
-    linear-gradient(135deg, rgb(255 255 255), transparent 32%),
-    linear-gradient(145deg, rgb(250 250 250), rgb(229 229 229));
-  box-shadow:
-    0 14px 28px rgb(0 0 0 / 0.18),
-    inset 2px 2px 0 rgb(255 255 255 / 0.9),
-    inset -2px -2px 0 rgb(163 163 163 / 0.2),
-    inset 0 -1.4rem 0 rgb(212 212 212 / 0.45);
-}
-
-.crt-cover::before {
-  position: absolute;
-  right: 0.65rem;
-  bottom: -0.2rem;
-  left: 0.65rem;
-  z-index: -1;
-  height: 0.35rem;
-  border-radius: 0 0 0.25rem 0.25rem;
-  background: rgb(163 163 163);
-  content: '';
-}
-
-.dark .crt-cover {
-  border-color: rgb(38 38 38);
-  background:
-    linear-gradient(135deg, rgb(255 255 255 / 0.1), transparent 30%),
-    linear-gradient(145deg, rgb(82 82 78), rgb(38 38 35));
-  box-shadow:
-    0 14px 28px rgb(0 0 0 / 0.5),
-    inset 2px 2px 0 rgb(255 255 255 / 0.12),
-    inset -2px -2px 0 rgb(0 0 0 / 0.45),
-    inset 0 -1.4rem 0 rgb(23 23 21 / 0.38);
-}
-
-.dark .crt-cover::before {
-  background: rgb(23 23 23);
-}
-
-.crt-screen {
-  border: 2px solid rgb(64 64 64);
-  border-radius: 12% / 8%;
-  background: rgb(10 10 10);
-  box-shadow:
-    -2px -2px 0 rgb(163 163 163),
-    2px 2px 0 rgb(255 255 255 / 0.9),
-    0 0 0 4px rgb(212 212 212),
-    0 0 0 5px rgb(255 255 255 / 0.2),
-    inset 0 0 22px 6px rgb(0 0 0 / 0.82),
-    inset 3px 3px 6px rgb(0 0 0 / 0.7),
-    inset -2px -2px 5px rgb(255 255 255 / 0.12);
-}
-
-.crt-screen::after {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  border-radius: inherit;
-  background:
-    radial-gradient(ellipse at 38% 24%, rgb(255 255 255 / 0.24), transparent 38%),
-    radial-gradient(ellipse at center, transparent 35%, rgb(0 0 0 / 0.52) 100%);
-  content: '';
-}
-
-.dark .crt-screen {
-  border-color: rgb(23 23 23);
-  box-shadow:
-    -2px -2px 0 rgb(38 38 36),
-    2px 2px 0 rgb(115 115 108 / 0.45),
-    0 0 0 4px rgb(64 64 60),
-    0 0 0 5px rgb(255 255 255 / 0.05),
-    inset 0 0 22px 6px rgb(0 0 0 / 0.88),
-    inset 3px 3px 6px rgb(0 0 0 / 0.8),
-    inset -2px -2px 5px rgb(255 255 255 / 0.08);
-}
-
-.crt-image {
-  border-radius: inherit;
-  filter: contrast(1.08) saturate(0.88);
-  transform: scale(1.09);
-}
-
-.crt-scanlines {
-  border-radius: inherit;
-  background:
-    radial-gradient(ellipse at center, transparent 48%, rgb(0 0 0 / 0.38) 100%),
-    repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.2) 2px 3px);
-}
-
-.mac-brand {
-  border: 1px solid rgb(115 115 115 / 0.55);
-  background:
-    linear-gradient(to bottom, #68a9d2 0 20%, #7bb862 20% 40%, #e7c457 40% 60%, #df8a4e 60% 80%, #c8665b 80%);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
-}
-
-.mac-slot {
-  background: rgb(82 82 82 / 0.75);
-  box-shadow: 0 1px 0 rgb(255 255 255 / 0.3);
-}
-
-.dark .mac-slot {
-  background: rgb(10 10 10 / 0.85);
-  box-shadow: 0 1px 0 rgb(255 255 255 / 0.1);
 }
 
 
