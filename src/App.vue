@@ -216,9 +216,8 @@ function columnValue(a: MediaItem, col: DetailColumn) {
               class="size-10 shrink-0 rounded-full ring-1 ring-black/10 dark:ring-white/10"
             >
           </a>
-          <h1 class="min-w-0 truncate text-base font-medium tracking-tight sm:text-xl" aria-label="Kevin Kwong is watching…">
-            <span class="sm:hidden" aria-hidden="true">Kevin</span>
-            <span class="title-word hidden sm:inline-block" aria-hidden="true">Kevin Kwong</span>
+          <h1 class="hidden min-w-0 truncate text-xl font-medium tracking-tight sm:block" aria-label="Kevin Kwong is watching…">
+            <span class="title-word inline-block" aria-hidden="true">Kevin Kwong</span>
             <span class="title-word ml-1 hidden sm:inline-block" aria-hidden="true">is</span>
             <span class="title-word ml-1 hidden sm:inline-block" aria-hidden="true">watching<span class="title-dot">.</span><span class="title-dot">.</span><span class="title-dot">.</span></span>
           </h1>
