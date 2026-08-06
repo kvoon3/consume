@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, shallowRef } from 'vue'
+import { computed, shallowRef, watch } from 'vue'
 
 import type { MediaItem } from '../composables/useBangumi'
 import type { SpotifyTrack } from '../composables/useSpotify'
@@ -16,6 +16,8 @@ const { t } = useLocale()
 const { data: spotify } = useSpotify()
 const selectedTrack = shallowRef<SpotifyTrack>()
 const embedUrl = computed(() => selectedTrack.value?.url.replace('open.spotify.com/', 'open.spotify.com/embed/'))
+
+watch(spotify, data => selectedTrack.value ??= data?.topTracks[0], { immediate: true })
 
 const ignoredTags = new Set(['Anime', 'TV', '动画', '日本', '神作'])
 const tagAliases: Record<string, string> = { 漫改: '漫画改' }
@@ -112,14 +114,6 @@ const maxTag = computed(() => Math.max(...tags.value.map(item => item.count), 1)
       <h2 class="mb-3 text-[10px] tracking-widest text-neutral-400">
         {{ t.topTracks }} · SPOTIFY
       </h2>
-      <iframe
-        v-if="embedUrl"
-        :src="embedUrl"
-        :title="`Spotify: ${selectedTrack!.title}`"
-        class="mb-3 h-20 w-full rounded-xl border-0"
-        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-        loading="lazy"
-      />
       <div>
         <button
           v-for="(track, index) in spotify.topTracks.slice(0, 10)"
@@ -157,11 +151,40 @@ const maxTag = computed(() => Math.max(...tags.value.map(item => item.count), 1)
       </div>
     </section>
   </details>
+
+  <Transition name="player-pop">
+    <div v-if="embedUrl" class="spotify-player fixed bottom-2 right-2 z-50 w-[min(calc(100vw-1rem),18rem)] sm:right-4 sm:w-[22rem]">
+      <button
+        type="button"
+        class="absolute -right-2 -top-2 z-10 flex size-6 items-center justify-center rounded-full border border-neutral-200 bg-white text-sm text-neutral-500 shadow-md transition-colors hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+        aria-label="Close Spotify player"
+        @click="selectedTrack = undefined"
+      >
+        ×
+      </button>
+      <iframe
+        :src="embedUrl"
+        :title="`Spotify: ${selectedTrack!.title}`"
+        class="h-20 w-full rounded-xl border-0 shadow-xl shadow-neutral-900/15 dark:shadow-black/50"
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+      />
+    </div>
+  </Transition>
 </template>
 
 <style scoped>
 details {
   interpolate-size: allow-keywords;
+}
+
+.spotify-player {
+  bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+@media (min-width: 640px) {
+  .spotify-player {
+    bottom: max(1rem, env(safe-area-inset-bottom));
+  }
 }
 
 details::details-content {
@@ -189,6 +212,17 @@ details[open] .taste-bar {
   animation-delay: var(--delay);
 }
 
+.player-pop-enter-active,
+.player-pop-leave-active {
+  transition: opacity 180ms cubic-bezier(0.23, 1, 0.32, 1), transform 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.player-pop-enter-from,
+.player-pop-leave-to {
+  opacity: 0;
+  transform: translateY(10px) scale(0.96);
+}
+
 @keyframes taste-row-in {
   from {
     opacity: 0;
@@ -211,6 +245,16 @@ details[open] .taste-bar {
   details[open] .taste-row,
   details[open] .taste-bar {
     animation: taste-fade-in 160ms ease both;
+  }
+
+  .player-pop-enter-active,
+  .player-pop-leave-active {
+    transition: opacity 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .player-pop-enter-from,
+  .player-pop-leave-to {
+    transform: none;
   }
 }
 
