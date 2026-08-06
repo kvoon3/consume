@@ -9,10 +9,12 @@ import { useSuperHover } from 'super-hover/vue'
 import type { Collections, MediaItem, SubjectType } from './composables/useBangumi'
 
 import CoverBackdrop from './components/CoverBackdrop.vue'
-import SpotifySection from './components/SpotifySection.vue'
+import PlayerBar from './components/PlayerBar.vue'
 import TasteSummary from './components/TasteSummary.vue'
 import { CATEGORY_KEYS, SUBJECT_TYPES, useBangumi } from './composables/useBangumi'
 import { useNeoDB } from './composables/useNeoDB'
+import { useSpotify } from './composables/useSpotify'
+import { playQueue } from './composables/useSpotifyPlayer'
 import { useLocale } from './composables/useLocale'
 import { useTheme } from './composables/useTheme'
 
@@ -28,6 +30,13 @@ const collections = computed<Collections | undefined>(() => {
 })
 const { locale, t, toggle: toggleLocale } = useLocale()
 const { cycle, isDark, theme } = useTheme()
+
+const { data: spotify } = useSpotify()
+// Autoplay is best-effort: browsers block audio before the first user gesture
+watch(spotify, (data) => {
+  if (data?.topTracks.length)
+    void playQueue(data.topTracks)
+})
 
 const hoverSound = defineSound({
   source: { type: 'sine', frequency: { start: 700, end: 500 } },
@@ -270,7 +279,7 @@ function columnValue(a: MediaItem, col: DetailColumn) {
           </button>
         </nav>
 
-        <TasteSummary :items="tasteItems" />
+        <TasteSummary :items="tasteItems" :spotify-visible="activeSubject === 3" />
 
         <nav class="mb-3 flex flex-wrap gap-1" aria-label="Collection categories">
           <a
@@ -330,8 +339,9 @@ function columnValue(a: MediaItem, col: DetailColumn) {
         </div>
       </div>
 
-      <SpotifySection />
     </main>
+
+    <PlayerBar />
   </div>
 </template>
 
@@ -398,6 +408,23 @@ function columnValue(a: MediaItem, col: DetailColumn) {
 
 .collection-list {
   scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(163 163 163 / 0.4) transparent;
+}
+
+.collection-list::-webkit-scrollbar {
+  width: 10px;
+}
+
+.collection-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.collection-list::-webkit-scrollbar-thumb {
+  background: rgb(163 163 163 / 0.35);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 9999px;
 }
 
 .preview-card {

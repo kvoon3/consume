@@ -9,7 +9,7 @@ if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET)
 
 const PORT = 3210
 const REDIRECT_URI = `http://127.0.0.1:${PORT}/callback`
-const SCOPES = 'user-library-read user-top-read user-read-recently-played'
+const SCOPES = 'user-library-read user-top-read user-read-recently-played user-read-private user-read-email user-modify-playback-state streaming user-read-playback-state'
 
 const authUrl = `https://accounts.spotify.com/authorize?${new URLSearchParams({
   client_id: SPOTIFY_CLIENT_ID,

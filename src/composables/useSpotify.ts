@@ -12,6 +12,7 @@ export interface SpotifyTrack {
   cover: string
   playedAt?: string
   title: string
+  uri: string
   url: string
 }
 

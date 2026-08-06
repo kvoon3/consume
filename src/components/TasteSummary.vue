@@ -4,12 +4,16 @@ import { computed } from 'vue'
 import type { MediaItem } from '../composables/useBangumi'
 
 import { useLocale } from '../composables/useLocale'
+import { useSpotify } from '../composables/useSpotify'
+import { playQueue } from '../composables/useSpotifyPlayer'
 
 const props = defineProps<{
   items: MediaItem[]
+  spotifyVisible?: boolean
 }>()
 
 const { t } = useLocale()
+const { data: spotify } = useSpotify()
 
 const ignoredTags = new Set(['Anime', 'TV', '动画', '日本', '神作'])
 const tagAliases: Record<string, string> = { 漫改: '漫画改' }
@@ -101,6 +105,49 @@ const maxTag = computed(() => Math.max(...tags.value.map(item => item.count), 1)
         </div>
       </section>
     </div>
+
+    <section v-if="spotifyVisible && spotify?.topTracks.length" class="border-t border-neutral-200 px-3 py-4 dark:border-neutral-800">
+      <h2 class="mb-3 text-[10px] tracking-widest text-neutral-400">
+        {{ t.topTracks }} · SPOTIFY
+      </h2>
+      <div>
+        <div
+          v-for="(track, index) in spotify.topTracks.slice(0, 10)"
+          :key="track.uri"
+          class="taste-row flex cursor-pointer items-center gap-3 rounded px-1 py-1 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900/60"
+          :style="{ '--delay': `${index * 30}ms` }"
+          role="button"
+          tabindex="0"
+          @click="playQueue(spotify!.topTracks, index)"
+          @keydown.enter="playQueue(spotify!.topTracks, index)"
+        >
+          <img :src="track.cover" :alt="track.title" class="size-7 rounded object-cover" loading="lazy">
+          <span class="min-w-0 flex-1 truncate text-xs">{{ track.title }}</span>
+          <span class="truncate text-xs text-neutral-400">{{ track.artist }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="spotifyVisible && spotify?.topArtists.length" class="border-t border-neutral-200 px-3 py-4 dark:border-neutral-800">
+      <h2 class="mb-3 text-[10px] tracking-widest text-neutral-400">
+        {{ t.topArtists }} · SPOTIFY
+      </h2>
+      <div class="grid gap-1 sm:grid-cols-2">
+        <a
+          v-for="(artist, index) in spotify.topArtists.slice(0, 10)"
+          :key="artist.url"
+          :href="artist.url"
+          target="_blank"
+          rel="noopener"
+          class="taste-row flex items-center gap-3 rounded px-1 py-1 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900/60"
+          :style="{ '--delay': `${index * 30}ms` }"
+        >
+          <img :src="artist.cover" :alt="artist.title" class="size-7 rounded-full object-cover" loading="lazy">
+          <span class="min-w-0 flex-1 truncate text-xs">{{ artist.title }}</span>
+          <span class="truncate text-xs text-neutral-400">{{ (artist.tags ?? []).slice(0, 2).join(' · ') }}</span>
+        </a>
+      </div>
+    </section>
   </details>
 </template>
 
