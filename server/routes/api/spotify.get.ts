@@ -13,6 +13,10 @@ async function spotifyGet<T>(path: string, token: string): Promise<T> {
 interface Artist { name: string, images: { url: string }[], external_urls: { spotify: string }, genres: string[] }
 interface Track { uri: string, name: string, artists: { name: string }[], album: { name: string, images: { url: string }[] }, external_urls: { spotify: string } }
 
+function lowQualityImage(images: { url: string }[]) {
+  return images[images.length - 1]?.url ?? ''
+}
+
 export default defineCachedHandler(async () => {
   if (!process.env.SPOTIFY_REFRESH_TOKEN)
     throw new Error('SPOTIFY_REFRESH_TOKEN is required')
@@ -27,21 +31,21 @@ export default defineCachedHandler(async () => {
 
   return {
     topArtists: artists.items.map(a => ({
-      cover: a.images[0]?.url ?? '',
+      cover: lowQualityImage(a.images),
       tags: a.genres ?? [],
       title: a.name,
       url: a.external_urls.spotify,
     })),
     topTracks: tracks.items.map(t => ({
       artist: t.artists.map(a => a.name).join(', '),
-      cover: t.album.images[0]?.url ?? '',
+      cover: lowQualityImage(t.album.images),
       title: t.name,
       uri: t.uri,
       url: t.external_urls.spotify,
     })),
     recentlyPlayed: recent.items.map(r => ({
       artist: r.track.artists.map(a => a.name).join(', '),
-      cover: r.track.album.images[0]?.url ?? '',
+      cover: lowQualityImage(r.track.album.images),
       playedAt: r.played_at,
       title: r.track.name,
       uri: r.track.uri,

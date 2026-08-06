@@ -25,13 +25,23 @@ const collections = computed<Collections | undefined>(() => {
     merged[key] = [...merged[key], ...(neodb.value?.[key] ?? [])] as MediaItem[]
   return merged
 })
-const { locale, t, toggle: toggleLocale } = useLocale()
+const { locale, t, toggle: setLocale } = useLocale()
 const { cycle, isDark, theme } = useTheme()
 
 const hoverSound = defineSound({
   source: { type: 'sine', frequency: { start: 700, end: 500 } },
   envelope: { decay: 0.035 },
   gain: 0.06,
+})
+const clickSound = defineSound({
+  source: { type: 'triangle', frequency: { start: 520, end: 320 } },
+  envelope: { decay: 0.045 },
+  gain: 0.08,
+})
+const tabSound = defineSound({
+  source: { type: 'sine', frequency: { start: 420, end: 680 } },
+  envelope: { decay: 0.08 },
+  gain: 0.07,
 })
 
 const themeIcons = {
@@ -134,6 +144,16 @@ const rootRef = useSuperHover({
   },
 })
 
+function toggleLocale() {
+  clickSound()
+  setLocale()
+}
+
+function toggleTheme() {
+  clickSound()
+  cycle()
+}
+
 function selectSubject(type: SubjectType) {
   active.value = undefined
   stopHighlightTimeout()
@@ -201,7 +221,7 @@ function columnValue(a: MediaItem, col: DetailColumn) {
 </script>
 
 <template>
-  <div class="relative min-h-screen bg-white font-sans text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
+  <div class="theme-surface relative min-h-screen bg-white font-sans text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
     <Transition name="backdrop-fade">
       <CoverBackdrop :key="activeSubject" :items="items" :dark="isDark" />
     </Transition>
@@ -211,7 +231,7 @@ function columnValue(a: MediaItem, col: DetailColumn) {
         <div class="flex min-w-0 items-center gap-3">
           <a href="https://bgm.tv/user/1140496" aria-label="Kevin Kwong on Bangumi" class="shrink-0">
             <img
-              src="https://kvoon.me/.netlify/images?q=70&url=%2Favatar_cropped.jpg"
+              src="/avatar_cropped.jpg"
               alt="Kevin Kwong"
               class="size-10 shrink-0 rounded-full ring-1 ring-black/10 dark:ring-white/10"
             >
@@ -237,9 +257,9 @@ function columnValue(a: MediaItem, col: DetailColumn) {
             <MorphIcon :icon="Languages" :size="18" />
           </button>
           <button
-            class="p-1 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
+            class="theme-toggle p-1 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
             :title="`Theme: ${theme}`"
-            @click="cycle"
+            @click="toggleTheme"
           >
             <MorphIcon :icon="themeIcons[theme]" :size="18" />
           </button>
@@ -277,7 +297,7 @@ function columnValue(a: MediaItem, col: DetailColumn) {
             :disabled="tab.count === 0"
             class="shrink-0 rounded-full px-3 py-1.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-30"
             :class="activeSubject === tab.type ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-100'"
-            @click="selectSubject(tab.type)"
+            @click="tabSound(); selectSubject(tab.type)"
           >
             {{ tab.label }} <span class="ml-1 tabular-nums opacity-60">{{ tab.count }}</span>
           </button>
@@ -292,7 +312,7 @@ function columnValue(a: MediaItem, col: DetailColumn) {
             :href="`#collection-${s.key}`"
             class="category-link rounded-full px-3 py-1.5 text-xs text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-100"
             :class="{ 'is-highlighted': highlightedSection === s.key }"
-            @click.prevent="scrollToSection(s.key)"
+            @click.prevent="clickSound(); scrollToSection(s.key)"
           >
             {{ sectionLabel(s.key) }} <span class="text-neutral-400 tabular-nums">{{ s.list.length }}</span>
           </a>

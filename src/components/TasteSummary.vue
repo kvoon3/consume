@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { defineSound } from '@web-kits/audio'
 import { computed, shallowRef, watch } from 'vue'
 
 import type { MediaItem } from '../composables/useBangumi'
@@ -15,6 +16,11 @@ const props = defineProps<{
 const { t } = useLocale()
 const { data: spotify } = useSpotify()
 const selectedTrack = shallowRef<SpotifyTrack>()
+const clickSound = defineSound({
+  source: { type: 'triangle', frequency: { start: 560, end: 360 } },
+  envelope: { decay: 0.045 },
+  gain: 0.08,
+})
 const embedUrl = computed(() => selectedTrack.value?.url.replace('open.spotify.com/', 'open.spotify.com/embed/'))
 
 watch(spotify, data => selectedTrack.value ??= data?.topTracks[0], { immediate: true })
@@ -64,7 +70,7 @@ const maxTag = computed(() => Math.max(...tags.value.map(item => item.count), 1)
 
 <template>
   <details class="group mb-5 rounded-xl border border-neutral-200 dark:border-neutral-800">
-    <summary class="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-xs font-medium tracking-widest text-neutral-500 dark:text-neutral-400">
+    <summary class="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-xs font-medium tracking-widest text-neutral-500 dark:text-neutral-400" @click="clickSound()">
       <span>{{ t.taste }} · {{ items.length }} {{ t.titles }}</span>
       <span class="text-neutral-300 transition-transform group-open:rotate-45 dark:text-neutral-600">＋</span>
     </summary>
@@ -121,7 +127,7 @@ const maxTag = computed(() => Math.max(...tags.value.map(item => item.count), 1)
           type="button"
           class="taste-row flex w-full items-center gap-3 rounded px-1 py-1 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900/60"
           :style="{ '--delay': `${index * 30}ms` }"
-          @click="selectedTrack = track"
+          @click="clickSound(); selectedTrack = track"
         >
           <img :src="track.cover" :alt="track.title" class="size-7 rounded object-cover" loading="lazy">
           <span class="min-w-0 flex-1 truncate text-xs">{{ track.title }}</span>
@@ -158,7 +164,7 @@ const maxTag = computed(() => Math.max(...tags.value.map(item => item.count), 1)
         type="button"
         class="absolute -right-2 -top-2 z-10 flex size-6 items-center justify-center rounded-full border border-neutral-200 bg-white text-sm text-neutral-500 shadow-md transition-colors hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:text-white"
         aria-label="Close Spotify player"
-        @click="selectedTrack = undefined"
+        @click="clickSound(); selectedTrack = undefined"
       >
         ×
       </button>
