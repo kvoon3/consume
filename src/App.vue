@@ -121,7 +121,7 @@ function movePreview(y: number) {
   if (!root)
     return
   const rect = root.getBoundingClientRect()
-  previewY.value = root.scrollTop + Math.max(8, Math.min(y - rect.top + 12, rect.height - 144))
+  previewY.value = root.scrollTop + Math.max(8, Math.min(y - rect.top + 12, rect.height - 176))
 }
 
 const rootRef = useSuperHover({
@@ -220,7 +220,7 @@ function columnValue(a: MediaItem, col: DetailColumn) {
 </script>
 
 <template>
-  <div class="theme-surface relative min-h-screen bg-white font-sans text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
+  <div class="theme-surface relative min-h-screen bg-white font-sans text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100" :class="{ dark: isDark }">
     <Transition name="backdrop-fade">
       <CoverBackdrop :key="activeSubject" :items="items" :dark="isDark" />
     </Transition>
@@ -339,13 +339,18 @@ function columnValue(a: MediaItem, col: DetailColumn) {
           </section>
 
 
-          <img
+          <div
             v-if="active"
-            :src="active.cover"
-            :alt="displayTitle(active)"
-            class="preview-card pointer-events-none absolute z-30 hidden h-28 w-20 rounded object-cover shadow-xl ring-1 ring-black/10 sm:block dark:ring-white/10"
+            class="preview-card crt-cover pointer-events-none absolute z-30 hidden h-36 w-28 p-2.5 pb-8 shadow-xl sm:block"
             :style="{ transform: `translateY(${previewY}px)`, right: `${detailWidth}rem` }"
           >
+            <div class="crt-screen relative h-full overflow-hidden">
+              <img :src="active.cover" :alt="displayTitle(active)" class="crt-image absolute inset-0 size-full object-cover">
+              <span class="crt-scanlines absolute inset-0" aria-hidden="true" />
+            </div>
+            <span class="mac-brand absolute bottom-2.5 left-3 size-2 rounded-sm" aria-hidden="true" />
+            <span class="mac-slot absolute bottom-3 right-3 h-0.5 w-9 rounded-full" aria-hidden="true" />
+          </div>
         </div>
       </div>
 
@@ -439,6 +444,115 @@ function columnValue(a: MediaItem, col: DetailColumn) {
   top: 0;
 }
 
+.crt-cover {
+  border: 1px solid rgb(163 154 132);
+  border-radius: 0.7rem 0.7rem 0.45rem 0.45rem;
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 0.55), transparent 30%),
+    linear-gradient(145deg, rgb(231 225 204), rgb(190 181 155));
+  box-shadow:
+    0 14px 28px rgb(0 0 0 / 0.28),
+    inset 2px 2px 0 rgb(255 255 255 / 0.5),
+    inset -2px -2px 0 rgb(94 86 68 / 0.25),
+    inset 0 -1.4rem 0 rgb(204 196 172 / 0.55);
+}
+
+.crt-cover::before {
+  position: absolute;
+  right: 0.65rem;
+  bottom: -0.2rem;
+  left: 0.65rem;
+  z-index: -1;
+  height: 0.35rem;
+  border-radius: 0 0 0.25rem 0.25rem;
+  background: rgb(126 117 96);
+  content: '';
+}
+
+.theme-surface.dark .crt-cover {
+  border-color: rgb(38 38 38);
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 0.1), transparent 30%),
+    linear-gradient(145deg, rgb(82 82 78), rgb(38 38 35));
+  box-shadow:
+    0 14px 28px rgb(0 0 0 / 0.5),
+    inset 2px 2px 0 rgb(255 255 255 / 0.12),
+    inset -2px -2px 0 rgb(0 0 0 / 0.45),
+    inset 0 -1.4rem 0 rgb(23 23 21 / 0.38);
+}
+
+.theme-surface.dark .crt-cover::before {
+  background: rgb(23 23 23);
+}
+
+.crt-screen {
+  border: 2px solid rgb(67 63 53);
+  border-radius: 12% / 8%;
+  background: rgb(10 10 10);
+  box-shadow:
+    -2px -2px 0 rgb(123 115 94),
+    2px 2px 0 rgb(255 252 230 / 0.65),
+    0 0 0 4px rgb(157 148 124),
+    0 0 0 5px rgb(255 255 255 / 0.2),
+    inset 0 0 22px 6px rgb(0 0 0 / 0.82),
+    inset 3px 3px 6px rgb(0 0 0 / 0.7),
+    inset -2px -2px 5px rgb(255 255 255 / 0.12);
+}
+
+.crt-screen::after {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse at 38% 24%, rgb(255 255 255 / 0.24), transparent 38%),
+    radial-gradient(ellipse at center, transparent 35%, rgb(0 0 0 / 0.52) 100%);
+  content: '';
+}
+
+.theme-surface.dark .crt-screen {
+  border-color: rgb(23 23 23);
+  box-shadow:
+    -2px -2px 0 rgb(38 38 36),
+    2px 2px 0 rgb(115 115 108 / 0.45),
+    0 0 0 4px rgb(64 64 60),
+    0 0 0 5px rgb(255 255 255 / 0.05),
+    inset 0 0 22px 6px rgb(0 0 0 / 0.88),
+    inset 3px 3px 6px rgb(0 0 0 / 0.8),
+    inset -2px -2px 5px rgb(255 255 255 / 0.08);
+}
+
+.crt-image {
+  border-radius: inherit;
+  filter: contrast(1.08) saturate(0.88);
+  transform: scale(1.09);
+}
+
+.crt-scanlines {
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse at center, transparent 48%, rgb(0 0 0 / 0.38) 100%),
+    repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.2) 2px 3px);
+}
+
+.mac-brand {
+  border: 1px solid rgb(120 111 90 / 0.45);
+  background:
+    linear-gradient(to bottom, #68a9d2 0 20%, #7bb862 20% 40%, #e7c457 40% 60%, #df8a4e 60% 80%, #c8665b 80%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.25);
+}
+
+.mac-slot {
+  background: rgb(79 73 59 / 0.75);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.3);
+}
+
+.theme-surface.dark .mac-slot {
+  background: rgb(10 10 10 / 0.85);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.1);
+}
+
+
 .category-link,
 .section-heading {
   transition: background-color 180ms ease, color 180ms ease;
@@ -482,6 +596,7 @@ function columnValue(a: MediaItem, col: DetailColumn) {
   .collection-list {
     scroll-behavior: auto;
   }
+
 }
 
 @keyframes title-word-fade-in {
