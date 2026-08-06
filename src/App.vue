@@ -63,6 +63,7 @@ const subjectSlugs: Record<SubjectType, string> = {
   3: 'music',
   4: 'game',
   6: 'real',
+  podcast: 'podcast',
 }
 const params = useUrlSearchParams('history', { writeMode: 'push' })
 const activeSubject = computed<SubjectType>({
@@ -76,6 +77,7 @@ const subjectLabels = computed<Record<SubjectType, string>>(() => ({
   3: t.value.music,
   4: t.value.game,
   6: t.value.real,
+  podcast: t.value.podcast,
 }))
 
 const subjectTabs = computed(() => SUBJECT_TYPES.map(type => ({
@@ -184,6 +186,7 @@ const SUBJECT_COLUMNS: Record<SubjectType, DetailColumn[]> = {
   3: ['creator', 'year', 'score'],
   4: ['creator', 'year', 'score'],
   6: ['year', 'progress', 'score'],
+  podcast: ['creator', 'year', 'score'],
 }
 const columns = computed(() => SUBJECT_COLUMNS[activeSubject.value])
 const gridStyle = computed(() => ({

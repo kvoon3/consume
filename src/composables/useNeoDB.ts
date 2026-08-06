@@ -1,10 +1,12 @@
 import { onMounted, ref } from 'vue'
 
+import type { SubjectType } from './useBangumi'
+
 export interface NeoItem {
   cover: string | null
   id: string
   score: number
-  subjectType: string
+  subjectType: SubjectType
   title: string
   titleCn: string
   url: string

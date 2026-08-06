@@ -1,6 +1,6 @@
 import { onMounted, ref } from 'vue'
 
-export type SubjectType = 1 | 2 | 3 | 4 | 6
+export type SubjectType = 1 | 2 | 3 | 4 | 6 | 'podcast'
 
 export interface MediaItem {
   cover: string
@@ -26,7 +26,7 @@ export interface Collections {
 }
 
 export const CATEGORY_KEYS = ['watching', 'wish', 'completed', 'onHold', 'dropped'] as const
-export const SUBJECT_TYPES: SubjectType[] = [2, 1, 3, 4, 6]
+export const SUBJECT_TYPES: SubjectType[] = [2, 1, 3, 'podcast', 4, 6]
 
 export function useBangumi() {
   const collections = ref<Collections>()

@@ -8,14 +8,14 @@ const CATEGORIES = {
   wish: 'wishlist',
 } as const
 
-// NeoDB categories -> Bangumi subject types (2 anime/tv, 6 real)
-const SUBJECT_TYPES: Record<string, 1 | 2 | 3 | 4 | 6> = {
+// NeoDB categories -> normalized client subject types
+const SUBJECT_TYPES: Record<string, 1 | 2 | 3 | 4 | 6 | 'podcast'> = {
   book: 1,
   game: 4,
   movie: 6,
   music: 3,
   performance: 6,
-  podcast: 3,
+  podcast: 'podcast',
   tv: 6,
 }
 
@@ -91,6 +91,7 @@ export default defineCachedHandler(async () => {
     ),
   )
 }, {
+  name: 'neodb-v2',
   maxAge: 300,
   swr: true,
 })
