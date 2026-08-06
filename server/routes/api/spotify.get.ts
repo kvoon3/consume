@@ -23,10 +23,9 @@ export default defineCachedHandler(async () => {
 
   const { access_token: token } = await getSpotifyAccessToken()
 
-  const [artists, tracks, recent] = await Promise.all([
+  const [artists, tracks] = await Promise.all([
     spotifyGet<{ items: Artist[] }>('/me/top/artists?limit=20&time_range=medium_term', token),
     spotifyGet<{ items: Track[] }>('/me/top/tracks?limit=20&time_range=medium_term', token),
-    spotifyGet<{ items: { track: Track, played_at: string }[] }>('/me/player/recently-played?limit=20', token),
   ])
 
   return {
@@ -42,14 +41,6 @@ export default defineCachedHandler(async () => {
       title: t.name,
       uri: t.uri,
       url: t.external_urls.spotify,
-    })),
-    recentlyPlayed: recent.items.map(r => ({
-      artist: r.track.artists.map(a => a.name).join(', '),
-      cover: lowQualityImage(r.track.album.images),
-      playedAt: r.played_at,
-      title: r.track.name,
-      uri: r.track.uri,
-      url: r.track.external_urls.spotify,
     })),
   }
 }, {

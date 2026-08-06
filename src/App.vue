@@ -174,7 +174,7 @@ function displayTitle(item: MediaItem) {
         </nav>
       </header>
 
-      <nav class="mb-5 flex gap-1 overflow-x-auto" aria-label="Media types" role="tablist">
+      <nav data-collection-session class="mb-5 flex gap-1 overflow-x-auto" aria-label="Media types" role="tablist">
         <button
           v-for="tab in subjectTabs"
           :key="tab.type"
@@ -193,9 +193,8 @@ function displayTitle(item: MediaItem) {
         {{ error }}
       </p>
       <template v-else>
-        <TasteSummary v-if="!loading" :items="tasteItems" :spotify-visible="activeSubject === 3" />
+        <TasteSummary :items="tasteItems" :loading="loading" :spotify-visible="activeSubject === 3" />
         <CollectionTable
-          :key="activeSubject"
           :loading="loading"
           :sections="sections"
           :subject="activeSubject"

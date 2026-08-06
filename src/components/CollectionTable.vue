@@ -11,11 +11,12 @@ export interface CollectionSection {
 <script setup lang="ts" vapor>
 import { useEventListener, useTimeoutFn } from '@vueuse/core'
 import { defineSound } from '@web-kits/audio'
-import { computed, shallowRef, useTemplateRef } from 'vue'
+import { computed, shallowRef, watch } from 'vue'
 import { useSuperHover } from 'super-hover/vue'
 
 import type { MediaItem, SubjectType } from '../composables/useBangumi'
 
+import CollectionTableSkeleton from './CollectionTableSkeleton.vue'
 import RetroCover from './RetroCover.vue'
 import { useLocale } from '../composables/useLocale'
 
@@ -56,7 +57,6 @@ const active = shallowRef<MediaItem>()
 const highlightedSection = shallowRef<keyof Collections>()
 const previewY = shallowRef(8)
 const scrollingUnlocked = shallowRef(true)
-const sessionRef = useTemplateRef<HTMLElement>('session')
 const { start: startHighlightTimeout, stop: stopHighlightTimeout } = useTimeoutFn(() => {
   highlightedSection.value = undefined
 }, 1000, { immediate: false })
@@ -86,9 +86,16 @@ const rootRef = useSuperHover({
   },
 })
 
+watch(() => props.subject, () => {
+  active.value = undefined
+  highlightedSection.value = undefined
+  if (rootRef.value)
+    rootRef.value.scrollTop = 0
+})
+
 useEventListener(window, 'scroll', () => scrollingUnlocked.value = false, { passive: true })
 useEventListener(document, 'pointerdown', (event) => {
-  if (!sessionRef.value?.contains(event.target as Node))
+  if (!(event.target as Element).closest('[data-collection-session]'))
     scrollingUnlocked.value = false
 }, { capture: true })
 
@@ -130,16 +137,9 @@ function columnValue(item: MediaItem, column: DetailColumn) {
 </script>
 
 <template>
-  <div v-if="loading" role="status" aria-label="Loading collections" class="h-[min(60vh,32rem)] min-h-80 overflow-hidden rounded-xl border border-base p-3">
-    <div class="mb-4 h-3 w-24 animate-pulse rounded bg-neutral-200 motion-reduce:animate-none dark:bg-neutral-800" />
-    <div v-for="row in 9" :key="row" class="grid grid-cols-[minmax(0,1fr)_4rem] gap-6 border-b border-neutral-100 py-3 dark:border-neutral-900">
-      <span class="h-3 animate-pulse rounded bg-neutral-200 motion-reduce:animate-none dark:bg-neutral-800" :class="row % 3 === 0 ? 'w-2/3' : 'w-5/6'" />
-      <span class="h-3 animate-pulse rounded bg-neutral-100 motion-reduce:animate-none dark:bg-neutral-900" />
-    </div>
-    <span class="sr-only">Loading collections…</span>
-  </div>
+  <CollectionTableSkeleton v-if="loading" />
 
-  <div v-else ref="session">
+  <div v-else data-collection-session>
     <nav class="mb-3 flex flex-wrap gap-1" aria-label="Collection categories">
       <a
         v-for="section in sections"

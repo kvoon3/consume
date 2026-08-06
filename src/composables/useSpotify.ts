@@ -12,14 +12,12 @@ export interface SpotifyArtist {
 export interface SpotifyTrack {
   artist: string
   cover: string
-  playedAt?: string
   title: string
   uri: string
   url: string
 }
 
 export interface SpotifyData {
-  recentlyPlayed: SpotifyTrack[]
   topArtists: SpotifyArtist[]
   topTracks: SpotifyTrack[]
 }
