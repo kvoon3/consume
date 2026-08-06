@@ -220,7 +220,7 @@ function columnValue(a: MediaItem, col: DetailColumn) {
 </script>
 
 <template>
-  <div class="theme-surface relative min-h-screen bg-white font-sans text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100" :class="{ dark: isDark }">
+  <div class="relative min-h-screen bg-base text-base font-sans antialiased">
     <Transition name="backdrop-fade">
       <CoverBackdrop :key="activeSubject" :items="items" :dark="isDark" />
     </Transition>
@@ -245,7 +245,7 @@ function columnValue(a: MediaItem, col: DetailColumn) {
           <a href="https://bgm.tv/user/1140496" target="_blank" rel="noopener" aria-label="Bangumi" title="Bangumi" class="transition-colors hover:text-neutral-900 dark:hover:text-neutral-100">
             <MorphIcon :icon="Library" :size="16" />
           </a>
-          <a href="https://github.com/kvoon3/watch" target="_blank" rel="noopener" aria-label="GitHub" class="transition-colors hover:text-neutral-900 dark:hover:text-neutral-100">
+          <a href="https://github.com/kvoon3/consume" target="_blank" rel="noopener" aria-label="GitHub" class="transition-colors hover:text-neutral-900 dark:hover:text-neutral-100">
             <svg viewBox="0 0 24 24" class="size-4 fill-current" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" /></svg>
           </a>
           <button
@@ -280,7 +280,7 @@ function columnValue(a: MediaItem, col: DetailColumn) {
         </button>
       </nav>
 
-      <div v-if="loading" role="status" class="flex h-[min(60vh,32rem)] min-h-80 items-center justify-center rounded-xl border border-neutral-200 text-neutral-400 dark:border-neutral-800">
+      <div v-if="loading" role="status" class="flex h-[min(60vh,32rem)] min-h-80 items-center justify-center rounded-xl border border-base text-neutral-400">
         <span class="size-4 animate-spin rounded-full border-2 border-current border-r-transparent motion-reduce:animate-none" />
         <span class="sr-only">Loading collections…</span>
       </div>
@@ -296,7 +296,7 @@ function columnValue(a: MediaItem, col: DetailColumn) {
             v-for="s in sections"
             :key="s.key"
             :href="`#collection-${s.key}`"
-            class="category-link rounded-full px-3 py-1.5 text-xs text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-100"
+            class="category-link text-muted rounded-full px-3 py-1.5 text-xs hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-900 dark:hover:text-neutral-100"
             :class="{ 'is-highlighted': highlightedSection === s.key }"
             @click.prevent="clickSound(); scrollToSection(s.key)"
           >
@@ -304,12 +304,12 @@ function columnValue(a: MediaItem, col: DetailColumn) {
           </a>
         </nav>
 
-        <div class="h-[min(60vh,32rem)] min-h-80 overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800">
+        <div class="h-[min(60vh,32rem)] min-h-80 overflow-hidden rounded-xl border border-base">
           <div
             ref="rootRef"
             class="collection-list scroll-fade-b relative h-full overflow-y-auto overscroll-contain"
           >
-          <div class="list-grid sticky top-0 z-20 border-b border-neutral-200 bg-white/95 px-3 py-1.5 text-[10px] tracking-widest text-neutral-400 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95" :style="gridStyle">
+          <div class="list-grid sticky top-0 z-20 border-base bg-base border-b px-3 py-1.5 text-[10px] tracking-widest text-neutral-400 backdrop-blur" :style="gridStyle">
             <span>{{ t.title }}</span>
             <span class="preview-column" />
             <span v-for="col in columns" :key="col" class="detail-column" :class="{ 'text-right': col === 'score' }">{{ columnHeader(col) }}</span>
@@ -317,7 +317,7 @@ function columnValue(a: MediaItem, col: DetailColumn) {
 
           <section v-for="s in sections" :id="`collection-${s.key}`" :key="s.key">
             <h2
-              class="section-heading sticky top-[27px] z-10 border-b border-neutral-200 bg-neutral-50/95 px-3 py-1 text-[10px] font-medium tracking-widest text-neutral-500 backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95 dark:text-neutral-400"
+              class="section-heading sticky top-[27px] z-10 border-base bg-subtle text-muted border-b px-3 py-1 text-[10px] font-medium tracking-widest backdrop-blur"
               :class="{ 'is-highlighted': highlightedSection === s.key }"
             >
               {{ sectionLabel(s.key) }} · {{ s.list.length }}
@@ -509,7 +509,7 @@ function columnValue(a: MediaItem, col: DetailColumn) {
   content: '';
 }
 
-.theme-surface.dark .crt-cover {
+.dark .crt-cover {
   border-color: rgb(38 38 38);
   background:
     linear-gradient(135deg, rgb(255 255 255 / 0.1), transparent 30%),
@@ -521,7 +521,7 @@ function columnValue(a: MediaItem, col: DetailColumn) {
     inset 0 -1.4rem 0 rgb(23 23 21 / 0.38);
 }
 
-.theme-surface.dark .crt-cover::before {
+.dark .crt-cover::before {
   background: rgb(23 23 23);
 }
 
@@ -550,7 +550,7 @@ function columnValue(a: MediaItem, col: DetailColumn) {
   content: '';
 }
 
-.theme-surface.dark .crt-screen {
+.dark .crt-screen {
   border-color: rgb(23 23 23);
   box-shadow:
     -2px -2px 0 rgb(38 38 36),
@@ -587,7 +587,7 @@ function columnValue(a: MediaItem, col: DetailColumn) {
   box-shadow: 0 1px 0 rgb(255 255 255 / 0.3);
 }
 
-.theme-surface.dark .mac-slot {
+.dark .mac-slot {
   background: rgb(10 10 10 / 0.85);
   box-shadow: 0 1px 0 rgb(255 255 255 / 0.1);
 }

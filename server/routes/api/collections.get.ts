@@ -43,7 +43,7 @@ async function fetchCollections(subjectType: number) {
     }).toString()
 
     const headers: Record<string, string> = {
-      'User-Agent': 'kvoon3/watch (https://github.com/kvoon3/watch)',
+      'User-Agent': 'kvoon3/consume (https://github.com/kvoon3/consume)',
     }
     if (process.env.BANGUMI_TOKEN)
       headers.Authorization = `Bearer ${process.env.BANGUMI_TOKEN}`

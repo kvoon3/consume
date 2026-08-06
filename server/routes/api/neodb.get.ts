@@ -47,7 +47,7 @@ async function fetchShelf(instance: string, type: string) {
     const res = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${process.env.NEODB_TOKEN}`,
-        'User-Agent': 'kvoon3/watch (https://github.com/kvoon3/watch)',
+        'User-Agent': 'kvoon3/consume (https://github.com/kvoon3/consume)',
       },
     })
     if (!res.ok)

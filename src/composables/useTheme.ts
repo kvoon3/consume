@@ -14,6 +14,7 @@ const isDark = computed(() =>
 
 watchEffect(() => {
   document.documentElement.classList.toggle('dark', isDark.value)
+  document.documentElement.style.colorScheme = isDark.value ? 'dark' : 'light'
   localStorage.setItem('theme', theme.value)
 })
 

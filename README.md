@@ -1,4 +1,4 @@
-# watch
+# consume
 
 My books, anime, music, games, and live action, powered by [Bangumi](https://bgm.tv).
 
