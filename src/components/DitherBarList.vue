@@ -40,11 +40,11 @@ watch(() => props.rows, (rows) => {
       <span class="text-right">{{ valueLabel }}</span>
       <span class="text-right">{{ hintLabel }}</span>
     </div>
-    <div class="space-y-1.5">
+    <div class="dither-bar-list">
       <div
         v-for="(row, index) in rows"
         :key="row.label"
-        class="dither-bar-row grid grid-cols-[4rem_1fr_2rem_2.5rem] items-center gap-2 text-xs"
+        class="dither-bar-row grid grid-cols-[4rem_1fr_2rem_2.5rem] items-center gap-2 py-0.75 text-xs"
       >
         <span class="truncate text-neutral-500 transition-colors dark:text-neutral-400" :title="row.label">{{ row.label }}</span>
         <span class="relative block h-3 overflow-hidden rounded-sm bg-neutral-100 dark:bg-neutral-900">
@@ -80,6 +80,14 @@ watch(() => props.rows, (rows) => {
 
 .dither-bar-fill.is-in {
   clip-path: inset(0 0 0 0);
+}
+
+.dither-bar-row {
+  transition: opacity 150ms ease;
+}
+
+.dither-bar-list:has(.dither-bar-row:hover) .dither-bar-row:not(:hover) {
+  opacity: 0.35;
 }
 
 .dither-bar-row:hover .dither-bar-fill {
