@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { DitherGradient, type DitherColor } from 'dither-ui'
-import { computed, onMounted, shallowRef } from 'vue'
+import { computed, onMounted, shallowRef, watch } from 'vue'
 
 export interface DitherBarRow {
   label: string
@@ -24,6 +24,12 @@ const max = computed(() => Math.max(...props.rows.map(row => row.value), 1))
 
 const mounted = shallowRef(false)
 onMounted(() => requestAnimationFrame(() => mounted.value = true))
+watch(() => props.rows.length, (length, previousLength) => {
+  if (length && previousLength === 0) {
+    mounted.value = false
+    requestAnimationFrame(() => mounted.value = true)
+  }
+})
 </script>
 
 <template>

@@ -88,6 +88,7 @@ export default defineCachedHandler(async (event) => {
   )
 }, {
   name: 'collections-v3',
-  maxAge: 300,
+  maxAge: 86400,
+  shouldInvalidateCache: event => Boolean(process.env.CACHE_REFRESH_TOKEN) && event.req.headers.get('x-cache-refresh') === process.env.CACHE_REFRESH_TOKEN,
   swr: true,
 })
