@@ -97,10 +97,16 @@ watch(() => props.subject, () => {
     rootRef.value.scrollTop = 0
 })
 
-// Any change to page scrollability (data load, panel toggle, viewport resize)
-// shows up as a documentElement resize — one observer covers every trigger.
-useResizeObserver(document.documentElement, syncScrollingLock)
+// Re-evaluate on interactions that should engage the lock (page scroll,
+// clicks outside the list) and whenever page scrollability itself changes
+// (data load, panel toggle, viewport resize).
+useEventListener(window, 'scroll', syncScrollingLock, { passive: true })
 useEventListener(window, 'resize', syncScrollingLock, { passive: true })
+useEventListener(document, 'pointerdown', (event) => {
+  if (!(event.target as Element).closest('[data-collection-session]'))
+    syncScrollingLock()
+}, { capture: true })
+useResizeObserver(document.documentElement, syncScrollingLock)
 
 function scrollToSection(key: keyof Collections) {
   const root = rootRef.value
