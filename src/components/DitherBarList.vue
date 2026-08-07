@@ -24,8 +24,8 @@ const max = computed(() => Math.max(...props.rows.map(row => row.value), 1))
 
 const mounted = shallowRef(false)
 onMounted(() => requestAnimationFrame(() => mounted.value = true))
-watch(() => props.rows.length, (length, previousLength) => {
-  if (length && previousLength === 0) {
+watch(() => props.rows, (rows) => {
+  if (rows.length) {
     mounted.value = false
     requestAnimationFrame(() => mounted.value = true)
   }

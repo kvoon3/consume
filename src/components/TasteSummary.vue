@@ -108,7 +108,7 @@ const scoreConfig = computed<ChartConfig>(() => ({
 </script>
 
 <template>
-  <details :aria-busy="loading" class="group mb-5 rounded-xl border border-neutral-200 dark:border-neutral-800">
+  <details open :aria-busy="loading" class="group mb-5 rounded-xl border border-neutral-200 dark:border-neutral-800">
     <summary class="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-xs font-medium tracking-widest text-neutral-500 dark:text-neutral-400" @click="clickSound()">
       <span class="flex items-center gap-2">
         {{ t.taste }}
