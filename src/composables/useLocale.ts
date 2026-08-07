@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 
-export type Locale = 'en' | 'zh'
+type Locale = 'en' | 'zh'
 
 const locale = ref<Locale>(localStorage.getItem('locale') === 'zh' ? 'zh' : 'en')
 

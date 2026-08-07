@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "index.html",
+    "server/routes/**/*.ts",
+    "scripts/*.{ts,mjs}"
+  ],
+  "ignore": ["vendor/**"],
+  "ignoreDependencies": [
+    "@stylistic/eslint-plugin",
+    "eslint-plugin-perfectionist"
+  ]
+}

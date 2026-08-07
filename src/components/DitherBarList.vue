@@ -2,7 +2,7 @@
 import { DitherGradient, type DitherColor } from 'dither-ui'
 import { computed, onMounted, shallowRef, watch } from 'vue'
 
-export interface DitherBarRow {
+interface DitherBarRow {
   label: string
   value: number
   /** optional third column, e.g. average rating */

@@ -2,7 +2,7 @@ import type { Ref } from 'vue'
 
 import { ref, watch } from 'vue'
 
-export interface SpotifyArtist {
+interface SpotifyArtist {
   cover: string
   tags: string[]
   title: string

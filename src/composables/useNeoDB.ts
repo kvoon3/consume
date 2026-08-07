@@ -4,7 +4,7 @@ import { ref, watch } from 'vue'
 
 import type { SubjectType } from './useBangumi'
 
-export interface NeoItem {
+interface NeoItem {
   cover: string | null
   id: string
   score: number
