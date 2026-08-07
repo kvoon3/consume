@@ -1,0 +1,9 @@
+--- a/package.json	2026-08-04 02:15:10
++++ b/package.json	2026-08-07 11:04:48
+@@ -1,5 +1,6 @@
+ {
+   "name": "dither-ui",
++  "private": true,
+   "version": "0.1.0",
+   "description": "Dithered UI toolkit for Vue 3 — composable ordered-dither charts (area, line, bar, pie, radar) on one tiny canvas engine, plus generative avatars, buttons, gradient washes and more.",
+   "type": "module",

@@ -3,7 +3,7 @@ import type { MediaItem } from '../composables/useBangumi'
 
 withDefaults(defineProps<{
   compact?: boolean
-  item: MediaItem
+  item?: MediaItem
   transition?: boolean
 }>(), {
   transition: true,
@@ -11,7 +11,7 @@ withDefaults(defineProps<{
 </script>
 
 <template>
-  <div class="crt-cover box-border" :class="compact ? 'p-1 pb-3' : 'p-2.5 pb-8'">
+  <div v-if="item" class="crt-cover box-border" :class="compact ? 'p-1 pb-3' : 'p-2.5 pb-8'">
     <div class="crt-screen relative h-full overflow-hidden">
       <Transition v-if="transition" name="cover-swap">
         <img :key="item.id" :src="item.cover" :alt="item.title" class="crt-image absolute inset-0 size-full object-cover">

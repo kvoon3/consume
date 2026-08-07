@@ -33,8 +33,11 @@ const messages = {
     topArtists: '热门艺人',
     titles: '部',
     era: '年代',
+    categories: '分类',
+    scoreDist: '评分分布',
     topTags: '常用标签',
     avg: '均分',
+    scrollLocked: '滚动已锁定 · 点击解锁',
   },
   en: {
     anime: 'Anime',
@@ -64,8 +67,11 @@ const messages = {
     topArtists: 'TOP ARTISTS',
     titles: 'TITLES',
     era: 'ERA',
+    categories: 'CATEGORIES',
+    scoreDist: 'RATINGS',
     topTags: 'TOP TAGS',
     avg: 'AVG',
+    scrollLocked: 'Scroll locked · click to unlock',
   },
 } as const
 

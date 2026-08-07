@@ -10,6 +10,7 @@ import type { CollectionSection } from './components/CollectionTable.vue'
 
 import CollectionTable from './components/CollectionTable.vue'
 import CoverBackdrop from './components/CoverBackdrop.vue'
+import DitherLab from './components/DitherLab.vue'
 import RetroCover from './components/RetroCover.vue'
 import TasteSummary from './components/TasteSummary.vue'
 import { CATEGORY_KEYS, SUBJECT_TYPES, useBangumi } from './composables/useBangumi'
@@ -46,6 +47,7 @@ const subjectSlugs: Record<SubjectType, string> = {
   podcast: 'podcast',
 }
 const params = useUrlSearchParams('history', { writeMode: 'push' })
+const lab = computed(() => 'lab' in params)
 const activeSubject = computed<SubjectType>({
   get: () => SUBJECT_TYPES.find(type => subjectSlugs[type] === params.type) ?? 2,
   set: type => params.type = subjectSlugs[type],
@@ -126,7 +128,8 @@ function displayTitle(item: MediaItem) {
 </script>
 
 <template>
-  <div class="relative min-h-screen bg-base text-base font-sans antialiased">
+  <DitherLab v-if="lab" />
+  <div v-else class="relative min-h-screen bg-base text-base font-sans antialiased">
     <Transition name="backdrop-fade">
       <CoverBackdrop :key="activeSubject" :items="items" :dark="isDark" />
     </Transition>
@@ -193,7 +196,7 @@ function displayTitle(item: MediaItem) {
         {{ error }}
       </p>
       <template v-else>
-        <TasteSummary :items="tasteItems" :loading="loading" :spotify-visible="activeSubject === 3" />
+        <TasteSummary :items="tasteItems" :loading="loading" :spotify-visible="activeSubject === 3" :collections="collections" :subject="activeSubject" />
         <CollectionTable
           :loading="loading"
           :sections="sections"

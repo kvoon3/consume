@@ -9,7 +9,7 @@ export interface CollectionSection {
 </script>
 
 <script setup lang="ts" vapor>
-import { useEventListener, useTimeoutFn } from '@vueuse/core'
+import { useEventListener, useResizeObserver, useTimeoutFn } from '@vueuse/core'
 import { defineSound } from '@web-kits/audio'
 import { computed, shallowRef, watch } from 'vue'
 import { useSuperHover } from 'super-hover/vue'
@@ -56,7 +56,7 @@ const items = computed(() => props.sections.flatMap(section => section.list))
 const active = shallowRef<MediaItem>()
 const highlightedSection = shallowRef<keyof Collections>()
 const previewY = shallowRef(8)
-const scrollingUnlocked = shallowRef(true)
+const scrollingLocked = shallowRef(false)
 const { start: startHighlightTimeout, stop: stopHighlightTimeout } = useTimeoutFn(() => {
   highlightedSection.value = undefined
 }, 1000, { immediate: false })
@@ -86,17 +86,8 @@ const rootRef = useSuperHover({
   },
 })
 
-function pageCanScroll() {
-  return document.documentElement.scrollHeight > document.documentElement.clientHeight
-}
-
-function lockScrolling() {
-  scrollingUnlocked.value = !pageCanScroll()
-}
-
-function unlockIfPageCannotScroll() {
-  if (!pageCanScroll())
-    scrollingUnlocked.value = true
+function syncScrollingLock() {
+  scrollingLocked.value = document.documentElement.scrollHeight > document.documentElement.clientHeight
 }
 
 watch(() => props.subject, () => {
@@ -105,14 +96,11 @@ watch(() => props.subject, () => {
   if (rootRef.value)
     rootRef.value.scrollTop = 0
 })
-watch(() => props.loading, unlockIfPageCannotScroll, { flush: 'post' })
 
-useEventListener(window, 'scroll', lockScrolling, { passive: true })
-useEventListener(window, 'resize', unlockIfPageCannotScroll, { passive: true })
-useEventListener(document, 'pointerdown', (event) => {
-  if (!(event.target as Element).closest('[data-collection-session]'))
-    lockScrolling()
-}, { capture: true })
+// Any change to page scrollability (data load, panel toggle, viewport resize)
+// shows up as a documentElement resize — one observer covers every trigger.
+useResizeObserver(document.documentElement, syncScrollingLock)
+useEventListener(window, 'resize', syncScrollingLock, { passive: true })
 
 function scrollToSection(key: keyof Collections) {
   const root = rootRef.value
@@ -172,7 +160,7 @@ function columnValue(item: MediaItem, column: DetailColumn) {
       <div
         ref="rootRef"
         class="collection-list scroll-fade-b relative h-full"
-        :class="scrollingUnlocked ? 'overflow-y-auto overscroll-contain' : 'overflow-hidden'"
+        :class="scrollingLocked ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'"
       >
         <div class="list-grid sticky top-0 z-20 border-base bg-base border-b px-3 py-1.5 text-[10px] tracking-widest text-neutral-400 backdrop-blur" :style="gridStyle">
           <span>{{ t.title }}</span>
@@ -214,13 +202,13 @@ function columnValue(item: MediaItem, column: DetailColumn) {
       </div>
 
       <button
-        v-if="!scrollingUnlocked"
+        v-if="scrollingLocked"
         type="button"
         class="absolute inset-0 z-40 flex cursor-pointer items-center justify-center bg-white/20 text-xs text-neutral-500/70 backdrop-blur-[1.5px] dark:bg-black/20 dark:text-neutral-400/70"
-        aria-label="Collection list scrolling locked. Click to enable scrolling inside the list."
-        @click="scrollingUnlocked = true"
+        :aria-label="t.scrollLocked"
+        @click="scrollingLocked = false"
       >
-        Scroll locked · click to unlock
+        {{ t.scrollLocked }}
       </button>
     </div>
   </div>

@@ -5,6 +5,7 @@ import { defineConfig } from 'vite-plus'
 
 export default defineConfig({
   lint: {
+    ignorePatterns: ['vendor/**'],
     options: {
       typeAware: true,
       typeCheck: true,

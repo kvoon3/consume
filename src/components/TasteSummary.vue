@@ -1,16 +1,21 @@
 <script setup lang="ts">
 import { defineSound } from '@web-kits/audio'
+import { Bar, BarChart, Grid, Legend, Pie, PieChart, Tooltip, XAxis, YAxis, type ChartConfig } from 'dither-ui'
 import { computed } from 'vue'
 
-import type { MediaItem } from '../composables/useBangumi'
+import type { Collections, MediaItem, SubjectType } from '../composables/useBangumi'
 
 import SpotifySummary from './SpotifySummary.vue'
+import DitherBarList from './DitherBarList.vue'
+import { CATEGORY_KEYS } from '../composables/useBangumi'
 import { useLocale } from '../composables/useLocale'
 
 const props = defineProps<{
   items: MediaItem[]
   loading: boolean
   spotifyVisible?: boolean
+  collections?: Collections
+  subject?: SubjectType
 }>()
 
 const { t } = useLocale()
@@ -59,12 +64,51 @@ const tags = computed(() => {
     .slice(0, 10)
 })
 
-const maxDecade = computed(() => Math.max(...decades.value.map(item => item.count), 1))
-const maxTag = computed(() => Math.max(...tags.value.map(item => item.count), 1))
+const decadeConfig = computed<ChartConfig>(() => ({
+  count: { label: t.value.titles, color: 'blue' },
+}))
+const tagRows = computed(() => tags.value.map(item => ({
+  label: item.label,
+  value: item.count,
+  hint: item.rating,
+})))
+
+const categoryPalette = ['blue', 'purple', 'green', 'orange', 'red'] as const
+const categoryData = computed(() => {
+  if (!props.collections || props.subject === undefined)
+    return []
+  return CATEGORY_KEYS
+    .map((key, i) => ({
+      name: key,
+      value: props.collections![key].filter(item => item.subjectType === props.subject).length,
+      color: categoryPalette[i],
+    }))
+    .filter(row => row.value > 0)
+})
+const categoryConfig = computed<ChartConfig>(() => {
+  const labels = t.value.subjectLabels as Partial<Record<SubjectType, Partial<Record<keyof Collections, string>>>>
+  return Object.fromEntries(categoryData.value.map(row => [
+    row.name,
+    { label: (props.subject !== undefined && labels[props.subject]?.[row.name as keyof Collections]) || t.value[row.name as keyof Collections] || row.name, color: row.color },
+  ]))
+})
+
+const scores = computed(() => {
+  const buckets = Array.from({ length: 10 }, (_, i) => ({ count: 0, label: String(i + 1) }))
+  for (const item of props.items) {
+    const score = Math.round(item.score)
+    if (score >= 1 && score <= 10)
+      buckets[score - 1].count++
+  }
+  return buckets
+})
+const scoreConfig = computed<ChartConfig>(() => ({
+  count: { label: t.value.titles, color: 'red' },
+}))
 </script>
 
 <template>
-  <details :open="loading" :aria-busy="loading" class="group mb-5 rounded-xl border border-neutral-200 dark:border-neutral-800">
+  <details :aria-busy="loading" class="group mb-5 rounded-xl border border-neutral-200 dark:border-neutral-800">
     <summary class="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-xs font-medium tracking-widest text-neutral-500 dark:text-neutral-400" @click="clickSound()">
       <span class="flex items-center gap-2">
         {{ t.taste }}
@@ -88,43 +132,53 @@ const maxTag = computed(() => Math.max(...tags.value.map(item => item.count), 1)
       <span class="sr-only">Loading taste profile…</span>
     </div>
 
-    <div v-else class="grid gap-6 border-t border-neutral-200 px-3 py-4 sm:grid-cols-2 dark:border-neutral-800">
+    <div v-else class="taste-charts grid gap-6 border-t border-neutral-200 px-3 py-4 sm:grid-cols-2 dark:border-neutral-800">
       <section>
         <h2 class="mb-3 text-[10px] tracking-widest text-neutral-400">
           {{ t.era }}
         </h2>
-        <div class="space-y-2">
-          <div
-            v-for="(item, index) in decades"
-            :key="item.label"
-            class="taste-row grid grid-cols-[3rem_1fr_2rem] items-center gap-2 text-xs"
-            :style="{ '--delay': `${index * 30}ms` }"
-          >
-            <span class="text-neutral-500 tabular-nums dark:text-neutral-400">{{ item.label }}</span>
-            <span class="h-2 overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-900">
-              <span class="taste-bar block h-full origin-left rounded-full bg-neutral-800 dark:bg-neutral-200" :style="{ width: `${item.count / maxDecade * 100}%` }" />
-            </span>
-            <span class="text-right text-neutral-400 tabular-nums">{{ item.count }}</span>
-          </div>
+        <div class="h-48">
+          <BarChart :data="decades" :config="decadeConfig" :margins="{ top: 8 }">
+            <Grid />
+            <XAxis data-key="label" />
+            <YAxis />
+            <Bar data-key="count" is-clickable />
+            <Tooltip label-key="label" />
+          </BarChart>
         </div>
       </section>
 
       <section>
-        <h2 class="mb-3 grid grid-cols-[1fr_2rem_2.5rem] gap-2 text-[10px] tracking-widest text-neutral-400">
-          <span>{{ t.topTags }}</span><span class="text-right">N</span><span class="text-right">{{ t.avg }}</span>
+        <DitherBarList :rows="tagRows" :hint-label="t.avg" color="green">
+          {{ t.topTags }}
+        </DitherBarList>
+      </section>
+
+      <section>
+        <h2 class="mb-3 text-[10px] tracking-widest text-neutral-400">
+          {{ t.scoreDist }}
         </h2>
-        <div class="space-y-1.5">
-          <div
-            v-for="(item, index) in tags"
-            :key="item.label"
-            class="taste-row relative grid grid-cols-[1fr_2rem_2.5rem] gap-2 overflow-hidden rounded px-1 py-0.5 text-xs"
-            :style="{ '--delay': `${index * 30}ms` }"
-          >
-            <span class="taste-bar absolute inset-y-0 left-0 origin-left bg-neutral-100 dark:bg-neutral-900" :style="{ width: `${item.count / maxTag * 100}%` }" />
-            <span class="relative truncate">{{ item.label }}</span>
-            <span class="relative text-right text-neutral-400 tabular-nums">{{ item.count }}</span>
-            <span class="relative text-right text-amber-500 tabular-nums">{{ item.rating ? item.rating.toFixed(1) : '—' }}</span>
-          </div>
+        <div class="h-48">
+          <BarChart :data="scores" :config="scoreConfig" :margins="{ top: 8 }">
+            <Grid />
+            <XAxis data-key="label" />
+            <YAxis />
+            <Bar data-key="count" is-clickable />
+            <Tooltip label-key="label" />
+          </BarChart>
+        </div>
+      </section>
+
+      <section v-if="categoryData.length">
+        <h2 class="mb-3 text-[10px] tracking-widest text-neutral-400">
+          {{ t.categories }}
+        </h2>
+        <div class="h-48">
+          <PieChart :data="categoryData" :config="categoryConfig" data-key="value" name-key="name" :inner-radius="0.55">
+            <Pie is-clickable />
+            <Legend align="center" is-clickable />
+            <Tooltip />
+          </PieChart>
         </div>
       </section>
     </div>
@@ -134,6 +188,15 @@ const maxTag = computed(() => Math.max(...tags.value.map(item => item.count), 1)
 </template>
 
 <style scoped>
+/* lighten the kit's dotted grid on our near-white background;
+   dark mode keeps the token (near-black dots blend into the dark bg) */
+.taste-charts :deep(.stroke-border) {
+  stroke: var(--color-neutral-100, #f5f5f5);
+}
+
+.dark .taste-charts :deep(.stroke-border) {
+  stroke: rgb(var(--border));
+}
 details {
   interpolate-size: allow-keywords;
 }
@@ -153,44 +216,9 @@ details[open]::details-content {
   opacity: 1;
 }
 
-details[open] .taste-row {
-  animation: taste-row-in 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
-  animation-delay: var(--delay);
-}
-
-details[open] .taste-bar {
-  animation: taste-bar-in 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
-  animation-delay: var(--delay);
-}
-
-@keyframes taste-row-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-}
-
-@keyframes taste-bar-in {
-  from {
-    opacity: 0.4;
-    transform: scaleX(0.75);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   details::details-content {
     transition: opacity 160ms ease;
-  }
-
-  details[open] .taste-row,
-  details[open] .taste-bar {
-    animation: taste-fade-in 160ms ease both;
-  }
-}
-
-@keyframes taste-fade-in {
-  from {
-    opacity: 0;
   }
 }
 </style>

@@ -1,0 +1,39 @@
+--- a/raster.ts	2026-08-04 02:15:10
++++ b/raster.ts	2026-08-07 12:31:07
+@@ -63,11 +63,13 @@
+   if (x < 0 || y < 0 || x >= buffer.width || y >= buffer.height || alpha <= 0) return
+   const i = (y * buffer.width + x) * 4
+   // Fast path: target is transparent — direct set, no compositing math.
++  // Buffer stores straight (un-premultiplied) RGBA: putImageData treats data
++  // as straight alpha, and the blend path below also divides by outA.
+   if (buffer.data[i + 3] === 0) {
+     const a = alpha < 0 ? 0 : alpha > 1 ? 1 : alpha
+-    buffer.data[i] = Math.round(color[0] * a)
+-    buffer.data[i + 1] = Math.round(color[1] * a)
+-    buffer.data[i + 2] = Math.round(color[2] * a)
++    buffer.data[i] = color[0]
++    buffer.data[i + 1] = color[1]
++    buffer.data[i + 2] = color[2]
+     buffer.data[i + 3] = Math.round(a * 255)
+     return
+   }
+--- a/dither-paint.ts	2026-08-04 02:15:10
++++ b/dither-paint.ts	2026-08-07 12:31:07
+@@ -370,12 +370,13 @@
+ }
+ 
+ /** Inlined RasterBuffer pixel set — no function call, no blend, no branch.
+- *  Buffer is cleared before paintColumn so first write is always a direct set. */
++ *  Buffer is cleared before paintColumn so first write is always a direct set.
++ *  Stores straight RGBA (see setOrBlendRasterPixel fast path). */
+ function setPixelInline(buf: RasterBuffer, i: number, color: Rgb, alpha: number): void {
+   const a = alpha < 0 ? 0 : alpha > 1 ? 1 : alpha
+-  buf.data[i] = (color[0] * a + 0.5) | 0
+-  buf.data[i + 1] = (color[1] * a + 0.5) | 0
+-  buf.data[i + 2] = (color[2] * a + 0.5) | 0
++  buf.data[i] = color[0]
++  buf.data[i + 1] = color[1]
++  buf.data[i + 2] = color[2]
+   buf.data[i + 3] = (a * 255 + 0.5) | 0
+ }
+ 
