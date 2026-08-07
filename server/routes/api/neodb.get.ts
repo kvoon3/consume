@@ -93,6 +93,6 @@ export default defineCachedHandler(async () => {
   )
 }, {
   name: 'neodb-v3',
-  maxAge: 300,
+  maxAge: 86400,
   swr: true,
 })

@@ -44,6 +44,6 @@ export default defineCachedHandler(async () => {
     })),
   }
 }, {
-  maxAge: 300,
+  maxAge: 86400,
   swr: true,
 })
