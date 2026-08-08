@@ -17,4 +17,9 @@ Copy the keys into `.env`:
 
 [Bangumi API](https://bangumi.github.io/api/) · [OpenAPI](https://bangumi.github.io/api/dist.json)
 
-MIT License
+## Credits
+
+- Data: [Bangumi](https://bgm.tv) · [NeoDB](https://neodb.social) · [Spotify](https://open.spotify.com)
+- Charts: [dither-ui](https://github.com/drvova/dither-ui) (vendored)
+
+[MIT License](LICENSE)
