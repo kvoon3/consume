@@ -1,0 +1,11 @@
+--- a/XAxis.vue
++++ b/XAxis.vue
+@@ -35,7 +35,7 @@
+         dominant-baseline="hanging"
+         fill="currentColor"
+       >
+-        {{ labelAt(row as Record<string, unknown>, i) }}
++        {{ labelAt(row, i) }}
+       </text>
+     </template>
+   </g>

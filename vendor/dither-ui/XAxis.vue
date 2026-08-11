@@ -35,7 +35,7 @@ function labelAt(row: Record<string, unknown>, i: number): string {
         dominant-baseline="hanging"
         fill="currentColor"
       >
-        {{ labelAt(row as Record<string, unknown>, i) }}
+        {{ labelAt(row, i) }}
       </text>
     </template>
   </g>
