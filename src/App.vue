@@ -1,7 +1,7 @@
 <script setup lang="ts" vapor>
 import { defineSound } from '@web-kits/audio'
 import { useIntervalFn, useUrlSearchParams } from '@vueuse/core'
-import { Languages, Library, Monitor, Moon, Sun } from 'lucide'
+import { Languages, Library, Moon, Sun } from 'lucide'
 import { MorphIcon } from 'morphicons/vue'
 import { computed, shallowRef, watch } from 'vue'
 
@@ -19,7 +19,7 @@ import { useLocale } from './composables/useLocale'
 import { useTheme } from './composables/useTheme'
 
 const { locale, t, toggle: setLocale } = useLocale()
-const { cycle, isDark, theme } = useTheme()
+const { isDark, toggle: toggleThemeMode } = useTheme()
 
 const clickSound = defineSound({
   source: { type: 'triangle', frequency: { start: 520, end: 320 } },
@@ -35,7 +35,6 @@ const tabSound = defineSound({
 const themeIcons = {
   dark: Moon,
   light: Sun,
-  system: Monitor,
 }
 
 const subjectSlugs: Record<SubjectType, string> = {
@@ -108,6 +107,8 @@ watch(items, (list) => {
     void (new Image().src = item.cover)
 })
 
+const themeTitle = computed(() => isDark.value ? 'Switch to light theme' : 'Switch to dark theme')
+
 function toggleLocale() {
   clickSound()
   setLocale()
@@ -115,7 +116,7 @@ function toggleLocale() {
 
 function toggleTheme() {
   clickSound()
-  cycle()
+  toggleThemeMode()
 }
 
 function selectSubject(type: SubjectType) {
@@ -131,7 +132,7 @@ function displayTitle(item: MediaItem) {
   <DitherLab v-if="lab" />
   <div v-else class="relative min-h-screen bg-base text-base font-sans antialiased">
     <Transition name="backdrop-fade">
-      <CoverBackdrop :key="activeSubject" :items="items" :dark="isDark" />
+      <CoverBackdrop :key="activeSubject" :items="items" />
     </Transition>
 
     <main class="relative z-10 mx-auto max-w-5xl px-6 py-12 sm:py-16">
@@ -169,10 +170,10 @@ function displayTitle(item: MediaItem) {
           </button>
           <button
             class="theme-toggle p-1 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
-            :title="`Theme: ${theme}`"
+            :title="themeTitle"
             @click="toggleTheme"
           >
-            <MorphIcon :icon="themeIcons[theme]" :size="18" />
+            <MorphIcon :icon="isDark ? themeIcons.dark : themeIcons.light" :size="18" />
           </button>
         </nav>
       </header>

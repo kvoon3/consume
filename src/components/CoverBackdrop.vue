@@ -4,7 +4,6 @@ import { computed } from 'vue'
 import type { MediaItem } from '../composables/useBangumi'
 
 const props = defineProps<{
-  dark: boolean
   items: MediaItem[]
 }>()
 
@@ -17,7 +16,7 @@ const columns = computed(() => Array.from({ length: 8 }, (_, column) =>
 </script>
 
 <template>
-  <div class="cover-backdrop" :class="{ 'is-dark': dark }" aria-hidden="true">
+  <div class="cover-backdrop" aria-hidden="true">
     <div class="backdrop-columns">
       <div
         v-for="(column, index) in columns"
@@ -114,21 +113,21 @@ const columns = computed(() => Array.from({ length: 8 }, (_, column) =>
   }
 }
 
-.cover-backdrop.is-dark {
+.dark .cover-backdrop {
   background: #0a0a0a;
 }
 
-.cover-backdrop.is-dark .backdrop-columns {
+.dark .cover-backdrop .backdrop-columns {
   opacity: 0.34;
   filter: grayscale(0.6) saturate(0.55) brightness(0.78) contrast(1.18);
   mix-blend-mode: luminosity;
 }
 
-.cover-backdrop.is-dark .backdrop-wash {
+.dark .cover-backdrop .backdrop-wash {
   background: radial-gradient(ellipse at center, rgb(10 10 10 / 0.82), rgb(10 10 10 / 0.58));
 }
 
-.cover-backdrop.is-dark .backdrop-dither {
+.dark .cover-backdrop .backdrop-dither {
   opacity: 0.08;
   background-image: radial-gradient(circle, rgb(255 255 255 / 0.12) 0.5px, transparent 0.7px);
   mix-blend-mode: normal;
