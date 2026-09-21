@@ -10,6 +10,7 @@ import type { CollectionSection } from './components/CollectionTable.vue'
 
 import CollectionTable from './components/CollectionTable.vue'
 import CoverBackdrop from './components/CoverBackdrop.vue'
+import DiscStage from './components/DiscStage.vue'
 import DitherLab from './components/DitherLab.vue'
 import RetroCover from './components/RetroCover.vue'
 import TasteSummary from './components/TasteSummary.vue'
@@ -197,6 +198,13 @@ function displayTitle(item: MediaItem) {
         {{ error }}
       </p>
       <template v-else>
+        <section v-if="sections.length" class="mb-5">
+          <h2 class="text-muted mb-3 text-[10px] font-medium tracking-widest">
+            {{ t.pile }}
+          </h2>
+          <DiscStage :items="items" />
+        </section>
+
         <TasteSummary :items="tasteItems" :loading="loading" :spotify-visible="activeSubject === 3" :collections="collections" :subject="activeSubject" />
         <CollectionTable
           :loading="loading"

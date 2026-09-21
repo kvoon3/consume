@@ -30,6 +30,51 @@ pnpm lint
 pnpm build
 ```
 
+## The disc floor (`src/components/DiscStage.vue`)
+
+A display-only pile: `items` scattered on a real plane seen in perspective, hover to light a disc
+up and label it, press and hold to move one, click to open it on Bangumi. matter-js 2D does the
+physics, laid on a plane tilted `rotateX(55deg)` about its near edge and sized so its far edge
+projects onto the horizon line — so the physics plane's `(x, y)` is the scene's `(x, z)`, and a
+later WebGL renderer could reuse the physics, hover, and drag logic unchanged.
+
+- Nothing on the floor follows the cursor: hover only highlights and labels. A disc moves when it is
+  grabbed (pointerdown) and stays where it is dropped; a click is anything under 5px of movement.
+- Screen point -> floor point is solved in closed form, and the projection is the same one the
+  horizon uses. Two checks have caught every mistake here, so keep both when touching it: (a)
+  predict each disc's screen centre from its transform and compare with `getBoundingClientRect`
+  (agrees within ~3px over all 79), and (b) actually hover and drag with the pointer — a drifted
+  mapping fails loudly there.
+- The hub is a real punch-through: the mask lives on `.disc-face`, not on `.disc`, because a mask
+  clips to the border box and would erase the disc's shadow and ring as well.
+- Plain `.dark …` selectors only — this build drops `:global(...)` outright, which also silently
+  killed `CollectionTable`'s dark highlight rules.
+
+## Pick (removed, recoverable)
+
+The Jev pick pipeline (the ask input, `POST /api/pick`, the shared Jev request shape in
+`server/utils/jev.ts`, the `scripts/pick-probe.ts` measuring tool) and the lift-into-a-row animation
+were removed from the tree. A copy is kept in a local `git stash` (`git stash list` → "pick pipeline
+(jev) + lift/row animation") — machine-local, so do not build on it — together with the
+`summary`/`rating` additions to the Bangumi mapping and the pick-related locale strings.
+
+The intended next step is a manual pick: click a disc (or a list row) to trigger the selection
+choreography without Jev, then iterate on the animation in isolation. Note the animation was the
+part being reworked — the floor and the scatter were the parts worth keeping.
+
+## Local dev
+
+- Node resolves `api.bgm.tv` to IPv6 first, and on this machine that route resets the connection
+  (`ECONNRESET`) while IPv4 works. The symptom is misleading: whichever subject's response is not in
+  the 24h cache fails with a 500, so it looks like "books and music are broken" while anime is fine.
+  The `dev` script now sets `--dns-result-order=ipv4first`, so plain `pnpm dev` works.
+- That setting has to be at process start. Putting `setDefaultResultOrder()` in `vite.config.ts` does
+  nothing (nitro runs route handlers in another context, which keeps the default order), and putting
+  it in the route itself is wrong because that code ships to the Worker, where networking is not
+  Node's.
+- Bangumi failures surface as `502 Bangumi request failed` (the cause is logged server-side) instead
+  of a bare 500, and the client shows the server's message.
+
 ## Vendored dither-ui
 
 `vendor/dither-ui` is a copy of https://github.com/drvova/dither-ui `dither-kit/`, installed as a `file:` dependency. Local modifications live as patch files in `patches/dither-ui/` (see its README). Never edit `vendor/dither-ui/` directly without regenerating a patch; refresh from upstream with `pnpm up:dither [ref]`, which re-applies all patches.

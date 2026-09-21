@@ -38,6 +38,7 @@ const messages = {
     topTags: '常用标签',
     avg: '均分',
     scrollLocked: '滚动已锁定 · 点击解锁',
+    pile: '碟堆',
   },
   en: {
     anime: 'Anime',
@@ -72,6 +73,7 @@ const messages = {
     topTags: 'TOP TAGS',
     avg: 'AVG',
     scrollLocked: 'Scroll locked · click to unlock',
+    pile: 'THE FLOOR',
   },
 } as const
 
