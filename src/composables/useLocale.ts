@@ -39,6 +39,7 @@ const messages = {
     avg: '均分',
     scrollLocked: '滚动已锁定 · 点击解锁',
     pile: '碟堆',
+    pick: '此刻想看点什么？',
   },
   en: {
     anime: 'Anime',
@@ -74,6 +75,7 @@ const messages = {
     avg: 'AVG',
     scrollLocked: 'Scroll locked · click to unlock',
     pile: 'THE FLOOR',
+    pick: 'What are you in the mood for?',
   },
 } as const
 

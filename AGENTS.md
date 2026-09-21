@@ -52,6 +52,11 @@ so its far edge projects onto the horizon line — so the physics plane's `(x, y
   body back once a disc has landed on the floor again. Picking or dropping one disc shifts every
   other slot, so a change gives *every* disc in the row `is-flying`: the row slides open and closed
   instead of the discs round the changed one snapping into place.
+- The ask input floats over the top of the stage and submits on Enter; it throws the text away and
+  lifts five random discs into the row for now (see the `ponytail:` note in `submit`). Its
+  `pointerdown` is stopped, or clicking into it to place the caret would grab a disc underneath.
+  Every disc's title pill is centred on its disc, and the ones in the row hang *below* theirs: the
+  air above the row is the ask input's.
 - Screen point -> floor point is solved in closed form, and the projection is the same one the
   horizon uses. Two checks have caught every mistake here, so keep both when touching it: (a)
   predict each disc's screen centre from its transform and compare with `getBoundingClientRect`
@@ -73,9 +78,10 @@ were removed from the tree. A copy is kept in a local `git stash` (`git stash li
 `summary`/`rating` additions to the Bangumi mapping and the pick-related locale strings.
 
 The manual pick replaced it: a clicked disc now stands up into the row (see above) with no Jev in
-the loop. Picking from a list row is still missing, and the row is display-only — nothing consumes
-the picks yet. Note the old animation was the part being reworked; the floor and the scatter were
-the parts worth keeping.
+the loop, and the row can be driven from the floating ask input too. Picking from a list row is
+still missing, and nothing consumes the picks — the ask input drops its text and shows random discs
+instead of asking Jev, which is the next step. Note the old animation was the part being reworked;
+the floor and the scatter were the parts worth keeping.
 
 ## Local dev
 

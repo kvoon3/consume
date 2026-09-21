@@ -4,10 +4,16 @@ import Matter from 'matter-js'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 
 import type { MediaItem } from '../composables/useBangumi'
+import { useLocale } from '../composables/useLocale'
 
 const props = defineProps<{
   items: MediaItem[]
 }>()
+
+const { t } = useLocale()
+
+// The ask that will go to the picker.
+const ask = ref('')
 
 const hoverSound = defineSound({
   source: { type: 'triangle', frequency: { start: 880, end: 640 } },
@@ -78,6 +84,8 @@ let onScreen = true
 let dragConstraint: Matter.Constraint | undefined
 let dragged = false
 let pointerStart = { x: 0, y: 0 }
+let hudId: string | undefined
+let hudWidth = 0
 
 // FNV-1a over the id — the only randomness in the pile, so the scatter never reshuffles.
 function seed(value: string, salt: number) {
@@ -203,6 +211,7 @@ function clearWorld() {
   heldId.value = undefined
   picked.value = []
   flying.value = new Set()
+  hudId = undefined
 }
 
 // The row of picked discs. A picked disc stands up out of the floor and floats toward the
@@ -235,13 +244,15 @@ function place(disc: Disc) {
   return { dy: plan.dy, grow: plan.grow, up: true, ...plan.slot(row) }
 }
 
-// Where a disc is drawn, in stage pixels: its centre and its on-screen radius.
+// Where a disc is drawn, in stage pixels: its centre, its on-screen radius, and whether it is
+// standing in the row.
 function screenOf(disc: Disc) {
-  const { dy, grow, x, y } = place(disc)
+  const { dy, grow, up, x, y } = place(disc)
   const depth = planeHeight - y
   const scale = (PERSPECTIVE / (PERSPECTIVE + depth * Math.sin(tilt))) * grow
   return {
     r: radius * scale,
+    up,
     x: width / 2 + (x - width / 2) * scale,
     y: height / 2 + (height / 2 - depth * Math.cos(tilt) + dy) * scale,
   }
@@ -272,22 +283,49 @@ function land(disc: Disc) {
 // A click either lifts a disc out of the pile into the row, or drops it back on the floor, and
 // either way it shifts every other disc in the row sideways — so they all fly, and the row closes
 // up or opens out instead of snapping around the disc that left or arrived.
-async function toggle(disc: Disc) {
-  const on = !picked.value.includes(disc.id)
-  picked.value = on ? [...picked.value, disc.id] : picked.value.filter(id => id !== disc.id)
+function toggle(disc: Disc) {
+  void setRow(picked.value.includes(disc.id)
+    ? picked.value.filter(id => id !== disc.id)
+    : [...picked.value, disc.id])
+}
+
+// Move the row to `next`, whichever discs that leaves in or out of it.
+async function setRow(next: string[]) {
+  const moved = [...picked.value, ...next]
+  const arrivals = next.filter(id => !picked.value.includes(id))
+  picked.value = next
   // Reduced motion has no transition to hold open, and no transitionend to close it.
   if (!reduced)
-    [disc.id, ...picked.value].forEach(id => flying.value.add(id))
-  if (on) {
+    moved.forEach(id => flying.value.add(id))
+  if (arrivals.length) {
     pickSound()
-    Matter.Composite.remove(engine.world, disc.body)
+    for (const disc of discs) {
+      if (arrivals.includes(disc.id))
+        Matter.Composite.remove(engine.world, disc.body)
+    }
   }
-  // Vue puts `is-flying` on the element in this same flush, so the transform written right
-  // after is one the browser can see change: the disc stands up as it flies.
+  // Vue puts `is-flying` on the elements in this same flush, so the transforms written right
+  // after are ones the browser can see change: the discs stand up as they fly.
   await nextTick()
   sync()
-  if (!on && reduced)
-    land(disc)
+  if (reduced)
+    for (const disc of discs) {
+      if (!picked.value.includes(disc.id))
+        land(disc)
+    }
+}
+
+// The ask, for now, is thrown away: five random discs is enough to watch the row move.
+// ponytail: this is where the Jev pick goes — POST `ask`, then `setRow` the ids it answers with.
+function submit() {
+  const pool = props.items.map(item => String(item.id))
+  const next: string[] = []
+  while (next.length < Math.min(5, pool.length)) {
+    const id = pool[Math.floor(Math.random() * pool.length)]
+    if (!next.includes(id))
+      next.push(id)
+  }
+  void setRow(next)
 }
 
 // Transforms go straight to the DOM, so Vue re-renders never fight the physics.
@@ -295,9 +333,17 @@ function sync() {
   if (hovered.value && hud.value) {
     const disc = discs.find(entry => entry.id === hoverId.value)
     if (disc) {
-      const { r, x: px, y: py } = screenOf(disc)
-      const x = Math.max(8, Math.min(width - 168, px - 10))
-      const y = Math.max(4, Math.min(height - 24, py - r - 34))
+      const { r, up, x: px, y: py } = screenOf(disc)
+      // The label is centred on its disc, so it needs its own width — which only changes when the
+      // hovered disc does, so this stays off the per-frame path.
+      if (hudId !== disc.id || !hudWidth) {
+        hudId = disc.id
+        hudWidth = hud.value.offsetWidth
+      }
+      const half = hudWidth / 2
+      const x = Math.max(8 + half, Math.min(width - 8 - half, px - half))
+      // Under a disc in the row: the air above it belongs to the ask.
+      const y = Math.max(4, Math.min(height - 24, up ? py + r + 8 : py - r - 34))
       hud.value.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`
     }
   }
@@ -335,6 +381,8 @@ function engage(disc: Disc | undefined) {
   if (disc)
     hoverSound()
   // The lift and the label position are written by the loop, so hovering needs one frame.
+  if (reduced)
+    sync()
   wake()
 }
 
@@ -490,6 +538,9 @@ watch(() => props.items, () => {
     @pointerup="onPointerUp"
     @transitionend="onTransitionEnd"
   >
+    <form class="disc-ask" @pointerdown.stop @submit.prevent="submit">
+      <input v-model="ask" type="text" enterkeyhint="go" :placeholder="t.pick" :aria-label="t.pick">
+    </form>
     <div class="disc-world">
       <div class="disc-floor" aria-hidden="true" />
       <button
@@ -562,6 +613,49 @@ watch(() => props.items, () => {
     linear-gradient(to bottom, rgb(252 252 252), rgb(242 242 242) 60%, rgb(236 236 236));
   box-shadow: inset 0 12px 18px rgb(0 0 0 / 0.05);
   pointer-events: none;
+}
+
+/* Sits in the air above the row, which hangs below the horizon and never reaches this far up. */
+.disc-ask {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  z-index: 6;
+  transform: translateX(-50%);
+}
+
+.disc-ask input {
+  width: min(16rem, 60vw);
+  padding: 0.3rem 0.85rem;
+  border: 1px solid rgb(var(--border));
+  border-radius: 999px;
+  background: rgb(var(--background) / 0.72);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.08);
+  color: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(8px);
+}
+
+.disc-ask input::placeholder {
+  color: rgb(115 115 115);
+}
+
+.disc-ask input:focus-visible {
+  border-color: rgb(23 23 23 / 0.5);
+  outline: none;
+}
+
+.dark .disc-ask input {
+  background: rgb(255 255 255 / 0.06);
+}
+
+.dark .disc-ask input::placeholder {
+  color: rgb(163 163 163);
+}
+
+.dark .disc-ask input:focus-visible {
+  border-color: rgb(212 212 212 / 0.5);
 }
 
 .disc {
@@ -646,8 +740,9 @@ watch(() => props.items, () => {
 
 .disc-hud {
   position: absolute;
-  top: 0.5rem;
-  left: 0.75rem;
+  /* At the stage's origin: the transform written per frame is where the label actually goes. */
+  top: 0;
+  left: 0;
   z-index: 4;
   max-width: calc(100% - 1.5rem);
   overflow: hidden;
@@ -697,7 +792,8 @@ watch(() => props.items, () => {
 }
 
 .dark .disc-hud {
-  background: rgb(var(--background) / 0.88);
+  /* The same faint wash the ask input wears, so both read as raised surfaces in the dark. */
+  background: rgb(255 255 255 / 0.06);
   color: rgb(212 212 212);
 }
 
