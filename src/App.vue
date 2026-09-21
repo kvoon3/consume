@@ -202,7 +202,7 @@ function displayTitle(item: MediaItem) {
           <h2 class="text-muted mb-3 text-[10px] font-medium tracking-widest">
             {{ t.pile }}
           </h2>
-          <DiscStage :items="items" />
+          <DiscStage :items="items" :subject="activeSubject" />
         </section>
 
         <TasteSummary :items="tasteItems" :loading="loading" :spotify-visible="activeSubject === 3" :collections="collections" :subject="activeSubject" />

@@ -2,13 +2,16 @@ import type { Ref } from 'vue'
 
 import { ref, watch } from 'vue'
 
-import type { SubjectType } from './useBangumi'
+import type { CollectionKey, SubjectType } from './useBangumi'
 
 interface NeoItem {
+  category: CollectionKey
   cover: string | null
   id: string
+  rating: number
   score: number
   subjectType: SubjectType
+  summary: string
   title: string
   titleCn: string
   url: string

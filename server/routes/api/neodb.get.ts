@@ -27,8 +27,11 @@ interface MarkEntry {
     uuid: string
     title: string
     localized_title?: { lang: string, text: string }[]
+    brief?: string
+    description?: string
     cover_image_url: string | null
     pub_year?: number | string
+    rating?: number
     tags?: string[] | null
     url: string
     category: string
@@ -75,13 +78,18 @@ export default defineCachedHandler(async () => {
           .filter(mark => mark.item.category in SUBJECT_TYPES)
           .sort((a, b) => (b.rating_grade || 0) - (a.rating_grade || 0) || b.created_time.localeCompare(a.created_time))
           .map(mark => ({
+            // Same three fields the Bangumi side carries for the pick: which shelf it is on, the
+            // site's average score, and something to read (NeoDB keeps the short one in `brief`).
+            category: key,
             cover: mark.item.cover_image_url ?? '',
             creator: mark.item.credits?.find(c => ['artist', 'host', 'developer', 'director'].includes(c.role))?.name ?? '',
             date: String(mark.item.pub_year ?? ''),
             id: mark.item.uuid,
             progress: 0, // ponytail: progress lives in per-item logs, add when needed
+            rating: mark.item.rating ?? 0,
             score: mark.rating_grade ?? 0,
             subjectType: SUBJECT_TYPES[mark.item.category],
+            summary: mark.item.brief || mark.item.description || '',
             tags: mark.tags,
             title: mark.item.title,
             titleCn: mark.item.localized_title?.find(t => t.lang.startsWith('zh'))?.text ?? mark.item.title,

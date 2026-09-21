@@ -5,13 +5,17 @@ import { ref, watch } from 'vue'
 export type SubjectType = 1 | 2 | 3 | 4 | 6 | 'podcast'
 
 export interface MediaItem {
+  category: CollectionKey
   cover: string
   creator?: string
   date: string
   id: number | string
   progress: number
+  // The site's average score, not the viewer's `score`: the pick reads this one.
+  rating: number
   score: number
   subjectType: SubjectType
+  summary: string
   tags: string[]
   title: string
   titleCn: string
@@ -28,6 +32,7 @@ export interface Collections {
 }
 
 export const CATEGORY_KEYS = ['watching', 'wish', 'completed', 'onHold', 'dropped'] as const
+export type CollectionKey = typeof CATEGORY_KEYS[number]
 export const SUBJECT_TYPES: SubjectType[] = [2, 1, 3, 'podcast', 4, 6]
 
 const emptyCollections = (): Collections => ({ completed: [], dropped: [], onHold: [], watching: [], wish: [] })

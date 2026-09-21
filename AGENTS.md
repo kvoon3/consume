@@ -52,11 +52,12 @@ so its far edge projects onto the horizon line — so the physics plane's `(x, y
   body back once a disc has landed on the floor again. Picking or dropping one disc shifts every
   other slot, so a change gives *every* disc in the row `is-flying`: the row slides open and closed
   instead of the discs round the changed one snapping into place.
-- The ask input floats over the top of the stage and submits on Enter; it throws the text away and
-  lifts five random discs into the row for now (see the `ponytail:` note in `submit`). Its
-  `pointerdown` is stopped, or clicking into it to place the caret would grab a disc underneath.
-  Every disc's title pill is centred on its disc, and the ones in the row hang *below* theirs: the
-  air above the row is the ask input's.
+- The ask input floats over the top of the stage and submits on Enter. It posts the ask to
+  `/api/pick` (see below) and turns the probabilities into the row; the pill reports what the last
+  ask is doing (thinking, nothing found, failed) and clears that verdict as soon as the ask is
+  edited. Its `pointerdown` is stopped, or clicking into it to place the caret would grab a disc
+  underneath. Every disc's title pill is centred on its disc, and the ones in the row hang *below*
+  theirs: the air above the row is the ask input's.
 - Screen point -> floor point is solved in closed form, and the projection is the same one the
   horizon uses. Two checks have caught every mistake here, so keep both when touching it: (a)
   predict each disc's screen centre from its transform and compare with `getBoundingClientRect`
@@ -69,19 +70,37 @@ so its far edge projects onto the horizon line — so the physics plane's `(x, y
 - Plain `.dark …` selectors only — this build drops `:global(...)` outright, which also silently
   killed `CollectionTable`'s dark highlight rules.
 
-## Pick (removed, recoverable)
+## Pick (Jev, `server/routes/api/pick.ts`)
 
-The Jev pick pipeline (the ask input, `POST /api/pick`, the shared Jev request shape in
-`server/utils/jev.ts`, the `scripts/pick-probe.ts` measuring tool) and the lift-into-a-row animation
-were removed from the tree. A copy is kept in a local `git stash` (`git stash list` → "pick pipeline
-(jev) + lift/row animation") — machine-local, so do not build on it — together with the
-`summary`/`rating` additions to the Bangumi mapping and the pick-related locale strings.
+The ask input submits `{ prompt, items }` to `POST /api/pick`; the server asks Jev (TypeSafe System
+One) and returns probabilities; the client turns them into the row of discs. Two shapes have to
+stay in sync, and both are measured rather than guessed:
 
-The manual pick replaced it: a clicked disc now stands up into the row (see above) with no Jev in
-the loop, and the row can be driven from the floating ask input too. Picking from a list row is
-still missing, and nothing consumes the picks — the ask input drops its text and shows random discs
-instead of asking Jev, which is the next step. Note the old animation was the part being reworked;
-the floor and the scatter were the parts worth keeping.
+- **The request** lives in `server/utils/jev.ts`, shared with `scripts/pick-probe.ts` (the measuring
+tool — `pnpm exec tsx scripts/pick-probe.ts`, or `PROMPTS='a|b'` for selected ones). Reword the
+question or the `state` fields there and re-run the probe, or the measurement is measuring a
+request nobody sends. The criterion that makes the status condition work ("every condition the
+request states about watched-status or progress is satisfied") is what keeps "还没看过的" out of the
+在看 and 看过 shelves.
+- **The thresholds** live in `DiscStage.vue` (`FLOOR`, `RATIO`, `LIMIT`) and came out of the same
+probe: an absolute cutoff alone reports "nothing matches" for vague asks whose best answer only
+reaches ~0.4, so a pick must also stand up against the best one. A genuine no-match measures
+0.02–0.04, which is what the floor is for.
+
+Two calls, not one: all 79 items with their summaries is 28k tokens, most of Jev's 32k state budget,
+and measures *worse* than a cheap pass over title/tags/status followed by a second pass over the top
+20 with summaries (max 0.90 against 0.73 on the same prompt, and a tenth of the tokens). The pick
+costs a few tenths of a cent; `TYPESAFE_API_KEY` is required and stays server-side.
+
+The collection routes carry what Jev reads and nothing else: `category` (the shelf — an item without
+one is dropped by `jevItem`), `rating` (the site's average, *not* the viewer's `score`) and
+`summary`. Everything else the pick sends is already on `MediaItem`.
+
+The old pick UI is still in a local `git stash` (`git stash list` → "pick pipeline (jev) + lift/row
+animation") — machine-local, so do not build on it: `src/components/PickSection.vue` had the ask box
+with result links, a `?ask=` URL round-trip, a retry, and the `qualified` side-channel the floor used
+to draw near-misses. None of that was brought back; the row and the disc-click replaced it. Picking
+from a list row is still missing.
 
 ## Local dev
 

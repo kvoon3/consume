@@ -25,6 +25,8 @@ interface CollectionEntry {
     images: { grid: string }
     name: string
     name_cn: string
+    score: number
+    short_summary?: string
     tags?: { name: string }[]
     type: number
     volumes: number
@@ -77,12 +79,18 @@ export default defineCachedHandler(async (event) => {
         .filter(entry => entry.type === type)
         .sort((a, b) => (b.rate || 0) - (a.rate || 0) || b.updated_at.localeCompare(a.updated_at))
         .map(entry => ({
+          // `category`, `rating` and `summary` are the pick's business (src/components/DiscStage.vue
+          // feeds them to Jev): the shelf the item sits on, the site's average score — not the
+          // collection's own `score` — and the blurb.
+          category: key,
           cover: entry.subject.images.grid,
           date: entry.subject.date,
           id: entry.subject.id,
           progress: entry.subject.type === 1 ? entry.vol_status : entry.ep_status,
+          rating: entry.subject.score || 0,
           score: entry.rate,
           subjectType: entry.subject.type,
+          summary: entry.subject.short_summary ?? '',
           tags: entry.subject.tags?.map(tag => tag.name) ?? [],
           title: entry.subject.name,
           titleCn: entry.subject.name_cn,

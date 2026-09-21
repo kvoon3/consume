@@ -40,6 +40,9 @@ const messages = {
     scrollLocked: '滚动已锁定 · 点击解锁',
     pile: '碟堆',
     pick: '此刻想看点什么？',
+    pickEmpty: '没挑出什么',
+    pickError: '没挑成',
+    pickThinking: '正在挑…',
   },
   en: {
     anime: 'Anime',
@@ -76,6 +79,9 @@ const messages = {
     scrollLocked: 'Scroll locked · click to unlock',
     pile: 'THE FLOOR',
     pick: 'What are you in the mood for?',
+    pickEmpty: 'Nothing stood out',
+    pickError: 'Pick failed',
+    pickThinking: 'Picking…',
   },
 } as const
 

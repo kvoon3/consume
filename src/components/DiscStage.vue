@@ -3,17 +3,43 @@ import { defineSound } from '@web-kits/audio'
 import Matter from 'matter-js'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 
-import type { MediaItem } from '../composables/useBangumi'
+import type { MediaItem, SubjectType } from '../composables/useBangumi'
 import { useLocale } from '../composables/useLocale'
 
 const props = defineProps<{
   items: MediaItem[]
+  subject: SubjectType
 }>()
 
 const { t } = useLocale()
 
-// The ask that will go to the picker.
+// Measured on the real list — see scripts/pick-probe.ts. An absolute cutoff alone would report
+// "nothing matches" for vague asks whose best answer only reaches ~0.4, so a pick must also stand
+// up against the top one; the floor is what keeps a real no-match empty.
+const FLOOR = 0.15
+const RATIO = 0.6
+const LIMIT = 5
+
+interface Picks {
+  considered: number
+  max: number
+  shortlist: { id: number | string, probability: number }[]
+}
+
+// The ask, and what became of the last one.
 const ask = ref('')
+const askState = ref<'empty' | 'error' | 'idle' | 'thinking'>('idle')
+const askStatus = computed(() => {
+  if (askState.value === 'thinking')
+    return t.value.pickThinking
+  if (askState.value === 'empty')
+    return t.value.pickEmpty
+  return askState.value === 'error' ? t.value.pickError : ''
+})
+
+// One ask is worth remembering: the same words over the same list must not cost twice.
+const memo = new Map<string, Picks>()
+let controller: AbortController | undefined
 
 const hoverSound = defineSound({
   source: { type: 'triangle', frequency: { start: 880, end: 640 } },
@@ -315,17 +341,79 @@ async function setRow(next: string[]) {
     }
 }
 
-// The ask, for now, is thrown away: five random discs is enough to watch the row move.
-// ponytail: this is where the Jev pick goes — POST `ask`, then `setRow` the ids it answers with.
-function submit() {
-  const pool = props.items.map(item => String(item.id))
-  const next: string[] = []
-  while (next.length < Math.min(5, pool.length)) {
-    const id = pool[Math.floor(Math.random() * pool.length)]
-    if (!next.includes(id))
-      next.push(id)
+// What Jev was measured with (scripts/pick-probe.ts), read off the items the user is looking at.
+function payload(text: string) {
+  return {
+    items: props.items.map(item => ({
+      category: item.category,
+      id: item.id,
+      progress: item.progress,
+      rating: item.rating,
+      summary: item.summary,
+      tags: item.tags,
+      title: item.title,
+      titleZh: item.titleCn,
+      total: item.total,
+      year: item.date ? item.date.slice(0, 4) : '',
+    })),
+    prompt: text,
   }
-  void setRow(next)
+}
+
+// The measured rule: keep whatever comes close to the best answer, and let the floor decide a real
+// no-match. The row is those ids in the order Jev ranked them.
+function reveal(result: Picks) {
+  const floor = Math.max(FLOOR, result.max * RATIO)
+  const ids = result.shortlist
+    .filter(pick => pick.probability >= floor)
+    .slice(0, LIMIT)
+    .map(pick => String(pick.id))
+  askState.value = ids.length ? 'idle' : 'empty'
+  void setRow(ids)
+}
+
+// Ask Jev for the row. The second stage of it runs over a shortlist with summaries
+// (server/routes/api/pick.ts), which takes a few seconds, so the ask says what it is doing.
+async function submit() {
+  const text = ask.value.trim()
+  if (!text)
+    return
+  const key = `${props.subject}|${text}`
+  const remembered = memo.get(key)
+  if (remembered) {
+    reveal(remembered)
+    return
+  }
+
+  controller?.abort()
+  const local = new AbortController()
+  controller = local
+  askState.value = 'thinking'
+  try {
+    const res = await fetch('/api/pick', {
+      body: JSON.stringify(payload(text)),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      signal: local.signal,
+    })
+    if (!res.ok)
+      throw new Error(`API ${res.status}`)
+    const result = await res.json() as Picks
+    memo.set(key, result)
+    reveal(result)
+  }
+  catch (error) {
+    if (local.signal.aborted)
+      return
+    console.error('[pick]', error)
+    askState.value = 'error'
+  }
+}
+
+// A verdict belongs to the ask it was made for.
+function onAskInput() {
+  if (askState.value === 'empty' || askState.value === 'error')
+    askState.value = 'idle'
 }
 
 // Transforms go straight to the DOM, so Vue re-renders never fight the physics.
@@ -514,6 +602,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   cancelAnimationFrame(frame)
+  controller?.abort()
   resizeObserver?.disconnect()
   intersectionObserver?.disconnect()
   clearWorld()
@@ -521,6 +610,8 @@ onBeforeUnmount(() => {
 })
 
 watch(() => props.items, () => {
+  controller?.abort()
+  askState.value = 'idle'
   clearWorld()
   build()
   if (reduced)
@@ -538,8 +629,28 @@ watch(() => props.items, () => {
     @pointerup="onPointerUp"
     @transitionend="onTransitionEnd"
   >
-    <form class="disc-ask" @pointerdown.stop @submit.prevent="submit">
-      <input v-model="ask" type="text" enterkeyhint="go" :placeholder="t.pick" :aria-label="t.pick">
+    <form
+      class="disc-ask"
+      :class="{ 'is-error': askState === 'error' }"
+      @pointerdown.stop
+      @submit.prevent="submit"
+    >
+      <input
+        v-model="ask"
+        type="text"
+        enterkeyhint="go"
+        :placeholder="t.pick"
+        :aria-label="t.pick"
+        @input="onAskInput"
+      >
+      <span
+        v-if="askStatus"
+        class="disc-ask-state"
+        :class="{ 'is-thinking': askState === 'thinking' }"
+        aria-live="polite"
+      >
+        {{ askStatus }}
+      </span>
     </form>
     <div class="disc-world">
       <div class="disc-floor" aria-hidden="true" />
@@ -621,41 +732,88 @@ watch(() => props.items, () => {
   top: 0.75rem;
   left: 50%;
   z-index: 6;
-  transform: translateX(-50%);
-}
-
-.disc-ask input {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
   width: min(16rem, 60vw);
-  padding: 0.3rem 0.85rem;
+  padding: 0.35rem 0.85rem;
   border: 1px solid rgb(var(--border));
   border-radius: 999px;
   background: rgb(var(--background) / 0.72);
   box-shadow: 0 2px 10px rgb(0 0 0 / 0.08);
+  transform: translateX(-50%);
+  transition: border-color 200ms ease;
+  backdrop-filter: blur(8px);
+}
+
+.disc-ask:focus-within {
+  border-color: rgb(23 23 23 / 0.5);
+}
+
+.disc-ask.is-error {
+  border-color: rgb(220 38 38 / 0.6);
+}
+
+.disc-ask input {
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: none;
   color: inherit;
   font-size: 0.75rem;
+  line-height: 1.4;
   letter-spacing: 0.02em;
-  backdrop-filter: blur(8px);
+  outline: none;
 }
 
 .disc-ask input::placeholder {
   color: rgb(115 115 115);
 }
 
-.disc-ask input:focus-visible {
-  border-color: rgb(23 23 23 / 0.5);
-  outline: none;
+/* What the last ask is doing: thinking, nothing found, or failed. */
+.disc-ask-state {
+  flex-shrink: 0;
+  color: rgb(115 115 115);
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
-.dark .disc-ask input {
+.disc-ask.is-error .disc-ask-state {
+  color: rgb(220 38 38);
+}
+
+/* Waiting has nothing to move, so it only breathes. */
+.disc-ask-state.is-thinking {
+  animation: disc-ask-wait 1.1s ease-in-out infinite;
+}
+
+@keyframes disc-ask-wait {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.dark .disc-ask {
   background: rgb(255 255 255 / 0.06);
 }
 
-.dark .disc-ask input::placeholder {
+.dark .disc-ask:focus-within {
+  border-color: rgb(212 212 212 / 0.5);
+}
+
+.dark .disc-ask input::placeholder,
+.dark .disc-ask-state {
   color: rgb(163 163 163);
 }
 
-.dark .disc-ask input:focus-visible {
-  border-color: rgb(212 212 212 / 0.5);
+.dark .disc-ask.is-error {
+  border-color: rgb(248 113 113 / 0.6);
+}
+
+.dark .disc-ask.is-error .disc-ask-state {
+  color: rgb(248 113 113);
 }
 
 .disc {
@@ -801,6 +959,10 @@ watch(() => props.items, () => {
   .disc,
   .disc-stage {
     transition: none;
+  }
+
+  .disc-ask-state {
+    animation: none;
   }
 }
 </style>
