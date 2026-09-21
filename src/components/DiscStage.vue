@@ -1,7 +1,7 @@
 <script setup lang="ts" vapor>
 import { defineSound } from '@web-kits/audio'
 import Matter from 'matter-js'
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 
 import type { MediaItem } from '../composables/useBangumi'
 
@@ -13,6 +13,12 @@ const hoverSound = defineSound({
   source: { type: 'triangle', frequency: { start: 880, end: 640 } },
   envelope: { decay: 0.03 },
   gain: 0.05,
+})
+
+const pickSound = defineSound({
+  source: { type: 'sine', frequency: { start: 520, end: 940 } },
+  envelope: { decay: 0.11 },
+  gain: 0.06,
 })
 
 interface Disc {
@@ -35,11 +41,22 @@ const hud = ref<HTMLElement>()
 const HORIZON = 0.42
 const PERSPECTIVE = 1000
 const TILT_DEG = 55
+// How far a picked disc floats toward the camera, in the same pixels as the plane's own
+// coordinates: off its surface, and in front of anything else at the row's depth.
+const LIFT = 56
+// And how high the row hangs, as a share of the stage: clear of the floor, whose far edge and
+// the discs on it stop at the horizon line.
+const ROW_Y = 0.28
 
 const hovered = shallowRef<MediaItem>()
 const hoverId = ref<string>()
 // Nothing on the floor moves until it is grabbed: hovering only lights a disc up and labels it.
 const heldId = ref<string>()
+// Picked discs leave the pile and stand in a row through the middle of the stage, in pick order.
+const picked = ref<string[]>([])
+// Mid-flight discs hold a transform transition; the row and the floor both leave them alone
+// until they land.
+const flying = ref(new Set<string>())
 
 const canDrag = window.matchMedia('(hover: hover) and (pointer: fine)').matches
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -74,17 +91,22 @@ function title(item: MediaItem) {
   return item.titleCn || item.title
 }
 
-// Screen point -> a point on the floor. Solving the perspective projection of the tilted
-// plane is a closed form, which keeps hover and drag exact instead of hand-waved.
-function toPlane(clientX: number, clientY: number) {
-  const rect = stage.value!.getBoundingClientRect()
-  const dy = clientY - rect.top - height / 2
+// Screen point (stage-relative) -> a point on the floor. Solving the perspective projection of
+// the tilted plane is a closed form, which keeps hover and drag exact instead of hand-waved.
+function planeFromScreen(sx: number, sy: number) {
+  const dy = sy - height / 2
   const cos = Math.cos(tilt)
   const sin = Math.sin(tilt)
-  // Depth from the plane's near edge to the point under the cursor.
-  const depth = Math.max(0, Math.min(planeHeight, PERSPECTIVE * (height / 2 - dy) / (PERSPECTIVE * cos + dy * sin)))
+  // Depth from the plane's near edge to the point below the screen point.
+  const depth = PERSPECTIVE * (height / 2 - dy) / (PERSPECTIVE * cos + dy * sin)
   const scale = PERSPECTIVE / (PERSPECTIVE + depth * sin)
-  return { x: width / 2 + (clientX - rect.left - width / 2) / scale, y: planeHeight - depth }
+  return { x: width / 2 + (sx - width / 2) / scale, y: planeHeight - depth }
+}
+
+function toPlane(clientX: number, clientY: number) {
+  const rect = stage.value!.getBoundingClientRect()
+  const { x, y } = planeFromScreen(clientX - rect.left, clientY - rect.top)
+  return { x, y: Math.max(0, Math.min(planeHeight, y)) }
 }
 
 function relayout() {
@@ -179,6 +201,93 @@ function clearWorld() {
   hovered.value = undefined
   hoverId.value = undefined
   heldId.value = undefined
+  picked.value = []
+  flying.value = new Set()
+}
+
+// The row of picked discs. A picked disc stands up out of the floor and floats toward the
+// camera, which scales it about the perspective origin — so the row is laid out in unlifted
+// screen space, at the one depth that projects onto the stage's own centre line, the point the
+// lift cannot move. `dy` then carries the row up off that line: it is a lift in the disc's own
+// frame, which the stand-up has already squared to the screen, so 1px of it is 1px of rise.
+function rowPlan() {
+  const depth = height / (2 * Math.cos(tilt))
+  const scale = PERSPECTIVE / (PERSPECTIVE + depth * Math.sin(tilt))
+  const grow = 1 / (1 - (LIFT * scale) / PERSPECTIVE)
+  const lifted = scale * grow
+  const spread = Math.min(radius * lifted * 2.6, width / Math.max(1, picked.value.length))
+  return {
+    grow,
+    dy: (ROW_Y * height - height / 2) / lifted,
+    slot: (index: number) => planeFromScreen(
+      width / 2 + ((index - (picked.value.length - 1) / 2) * spread) / grow,
+      height / 2,
+    ),
+  }
+}
+
+// Where a disc belongs: its point on the plane, its offset in the plane's frame, and its lift.
+function place(disc: Disc) {
+  const row = picked.value.indexOf(disc.id)
+  if (row < 0)
+    return { dy: 0, grow: 1, up: false, ...disc.body.position }
+  const plan = rowPlan()
+  return { dy: plan.dy, grow: plan.grow, up: true, ...plan.slot(row) }
+}
+
+// Where a disc is drawn, in stage pixels: its centre and its on-screen radius.
+function screenOf(disc: Disc) {
+  const { dy, grow, x, y } = place(disc)
+  const depth = planeHeight - y
+  const scale = (PERSPECTIVE / (PERSPECTIVE + depth * Math.sin(tilt))) * grow
+  return {
+    r: radius * scale,
+    x: width / 2 + (x - width / 2) * scale,
+    y: height / 2 + (height / 2 - depth * Math.cos(tilt) + dy) * scale,
+  }
+}
+
+// One transform for both places a disc can be: on the floor, or standing in the row. The
+// function list is the same either way, so the browser has something to interpolate between,
+// and the spin is in-plane on the floor and on the disc's face once it has stood up. Hovering
+// never moves a disc, it only lights up; a grabbed one lifts a hair off the floor.
+function transform(disc: Disc, { dy, up, x, y }: ReturnType<typeof place>) {
+  const held = heldId.value === disc.id
+  const hover = hoverId.value === disc.id
+  return `translate3d(${(x - radius).toFixed(2)}px, ${(y - radius).toFixed(2)}px, ${up ? 0 : 2}px)`
+    + ` rotateX(${up ? -TILT_DEG : 0}deg) translateY(${dy.toFixed(2)}px) rotate(${disc.spin.toFixed(2)}deg)`
+    + ` translateZ(${up ? LIFT : held ? 7 : 0}px) scale(${held ? 1.1 : hover ? 1.06 : 1})`
+}
+
+// A flight is over: let physics have the disc back, where it left off.
+function land(disc: Disc) {
+  flying.value.delete(disc.id)
+  if (picked.value.includes(disc.id) || Matter.Composite.allBodies(engine.world).includes(disc.body))
+    return
+  Matter.Composite.add(engine.world, disc.body)
+  Matter.Sleeping.set(disc.body, false)
+  wake()
+}
+
+// A click either lifts a disc out of the pile into the row, or drops it back on the floor, and
+// either way it shifts every other disc in the row sideways — so they all fly, and the row closes
+// up or opens out instead of snapping around the disc that left or arrived.
+async function toggle(disc: Disc) {
+  const on = !picked.value.includes(disc.id)
+  picked.value = on ? [...picked.value, disc.id] : picked.value.filter(id => id !== disc.id)
+  // Reduced motion has no transition to hold open, and no transitionend to close it.
+  if (!reduced)
+    [disc.id, ...picked.value].forEach(id => flying.value.add(id))
+  if (on) {
+    pickSound()
+    Matter.Composite.remove(engine.world, disc.body)
+  }
+  // Vue puts `is-flying` on the element in this same flush, so the transform written right
+  // after is one the browser can see change: the disc stands up as it flies.
+  await nextTick()
+  sync()
+  if (!on && reduced)
+    land(disc)
 }
 
 // Transforms go straight to the DOM, so Vue re-renders never fight the physics.
@@ -186,26 +295,15 @@ function sync() {
   if (hovered.value && hud.value) {
     const disc = discs.find(entry => entry.id === hoverId.value)
     if (disc) {
-      const sin = Math.sin(tilt)
-      const cos = Math.cos(tilt)
-      const depth = planeHeight - disc.body.position.y
-      const scale = PERSPECTIVE / (PERSPECTIVE + depth * sin)
-      const px = width / 2 + (disc.body.position.x - width / 2) * scale
-      const py = height / 2 + (height / 2 - depth * cos) * scale
+      const { r, x: px, y: py } = screenOf(disc)
       const x = Math.max(8, Math.min(width - 168, px - 10))
-      const y = Math.max(4, Math.min(height - 24, py - radius * scale - 34))
+      const y = Math.max(4, Math.min(height - 24, py - r - 34))
       hud.value.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`
     }
   }
 
-  for (const disc of discs) {
-    const { x, y } = disc.body.position
-    // Hovering never moves a disc, it only lights up; a grabbed one lifts a hair off the floor.
-    const feedback = heldId.value === disc.id
-      ? ' translateZ(7px) scale(1.1)'
-      : hoverId.value === disc.id ? ' scale(1.06)' : ''
-    disc.el.style.transform = `translate3d(${(x - radius).toFixed(2)}px, ${(y - radius).toFixed(2)}px, 2px) rotate(${disc.spin.toFixed(2)}deg)${feedback}`
-  }
+  for (const disc of discs)
+    disc.el.style.transform = transform(disc, place(disc))
 }
 
 function tick() {
@@ -244,6 +342,8 @@ function under(point: { x: number, y: number }) {
   let best: Disc | undefined
   let bestDistance = Number.POSITIVE_INFINITY
   for (const disc of discs) {
+    if (picked.value.includes(disc.id))
+      continue
     const { x, y } = disc.body.position
     const distance = Math.hypot(x - point.x, y - point.y)
     if (distance < radius * 1.3 && distance < bestDistance) {
@@ -252,6 +352,19 @@ function under(point: { x: number, y: number }) {
     }
   }
   return best
+}
+
+// A disc in the row is off the floor, so it is hit in screen space instead.
+function underRow(clientX: number, clientY: number) {
+  const rect = stage.value!.getBoundingClientRect()
+  const x = clientX - rect.left
+  const y = clientY - rect.top
+  return discs.find((disc) => {
+    if (!picked.value.includes(disc.id))
+      return false
+    const screen = screenOf(disc)
+    return Math.hypot(screen.x - x, screen.y - y) < Math.max(screen.r, 12)
+  })
 }
 
 function onPointerMove(event: PointerEvent) {
@@ -265,7 +378,7 @@ function onPointerMove(event: PointerEvent) {
     wake()
     return
   }
-  engage(under(point))
+  engage(underRow(event.clientX, event.clientY) ?? under(point))
 }
 
 function onPointerDown(event: PointerEvent) {
@@ -274,8 +387,10 @@ function onPointerDown(event: PointerEvent) {
   const point = toPlane(event.clientX, event.clientY)
   pointerStart = point
   dragged = false
-  const disc = under(point)
-  if (!disc)
+  // A disc in the row is not grabbable — a constraint would still pull its body, which is off
+  // the floor — it goes back on click instead.
+  const disc = underRow(event.clientX, event.clientY) ?? under(point)
+  if (!disc || picked.value.includes(disc.id))
     return
   // Grabbed: it follows the cursor while held, and stays where it is dropped.
   heldId.value = disc.id
@@ -302,11 +417,25 @@ function onPointerUp() {
   wake()
 }
 
-function onClick(event: MouseEvent) {
-  if (!dragged)
+function onClick(event: MouseEvent, id: string) {
+  if (dragged) {
+    event.preventDefault()
+    dragged = false
     return
-  event.preventDefault()
-  dragged = false
+  }
+  const disc = discs.find(entry => entry.id === id)
+  if (disc)
+    void toggle(disc)
+}
+
+// A disc that has finished its flight either way is no longer mid-air.
+function onTransitionEnd(event: TransitionEvent) {
+  if (event.propertyName !== 'transform')
+    return
+  const id = (event.target as HTMLElement).dataset.disc
+  const disc = id && discs.find(entry => entry.id === id)
+  if (disc)
+    land(disc)
 }
 
 function onPointerLeave() {
@@ -359,27 +488,32 @@ watch(() => props.items, () => {
     @pointerleave="onPointerLeave"
     @pointermove="onPointerMove"
     @pointerup="onPointerUp"
+    @transitionend="onTransitionEnd"
   >
     <div class="disc-world">
       <div class="disc-floor" aria-hidden="true" />
-      <a
+      <button
         v-for="item in items"
         :key="item.id"
-        :href="item.url"
-        target="_blank"
-        rel="noopener"
-        data-disc
+        type="button"
         class="disc"
-        :class="{ 'is-held': heldId === String(item.id), 'is-hover': hoverId === String(item.id) }"
+        :class="{
+          'is-held': heldId === String(item.id),
+          'is-hover': hoverId === String(item.id),
+          'is-picked': picked.includes(String(item.id)),
+          'is-flying': flying.has(String(item.id)),
+        }"
+        :data-disc="String(item.id)"
         :aria-label="title(item)"
-        @click="onClick"
+        :aria-pressed="picked.includes(String(item.id))"
+        @click="onClick($event, String(item.id))"
       >
         <span class="disc-face">
           <img :src="item.cover" alt="" draggable="false" loading="lazy" decoding="async">
           <span class="disc-sheen" aria-hidden="true" />
           <span class="disc-ring" aria-hidden="true" />
         </span>
-      </a>
+      </button>
     </div>
 
     <Transition name="hud">
@@ -436,14 +570,28 @@ watch(() => props.items, () => {
   left: 0;
   width: var(--disc-size, 3rem);
   height: var(--disc-size, 3rem);
-  overflow: hidden;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
+  overflow: hidden;
+  background: none;
+  cursor: pointer;
   box-shadow: 0 2px 5px rgb(0 0 0 / 0.22);
   transform-origin: center;
-  transition: opacity 260ms ease, filter 260ms ease, box-shadow 200ms ease;
+  /* `--disc-fly` holds the flight's own easing: 0ms unless the disc is moving between the
+     floor and the row. */
+  transition: opacity 260ms ease, filter 260ms ease, box-shadow 200ms ease, transform var(--disc-fly, 0ms);
   will-change: transform;
   -webkit-user-drag: none;
   user-select: none;
+}
+
+.disc.is-flying {
+  --disc-fly: 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.disc.is-picked {
+  box-shadow: 0 10px 20px rgb(0 0 0 / 0.28);
 }
 
 .disc-face {
