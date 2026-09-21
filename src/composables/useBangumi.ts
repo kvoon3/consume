@@ -32,6 +32,13 @@ export const SUBJECT_TYPES: SubjectType[] = [2, 1, 3, 'podcast', 4, 6]
 
 const emptyCollections = (): Collections => ({ completed: [], dropped: [], onHold: [], watching: [], wish: [] })
 
+// Nitro answers with `{ statusMessage }`; show that when it is there, so a failure reads as
+// something other than "API 500".
+async function failure(res: Response) {
+  const body = await res.json().catch(() => undefined) as { statusMessage?: string } | undefined
+  return body?.statusMessage || `API ${res.status}`
+}
+
 export function useBangumi(subjectType: Ref<SubjectType>) {
   const collections = ref<Collections>()
   const loading = ref(true)
@@ -58,7 +65,7 @@ export function useBangumi(subjectType: Ref<SubjectType>) {
     try {
       const res = await fetch(`/api/collections?subject_type=${type}`, { signal: controller.signal })
       if (!res.ok)
-        throw new Error(`API ${res.status}`)
+        throw new Error(await failure(res))
       const data = await res.json() as Collections
       cache.set(type, data)
       collections.value = data

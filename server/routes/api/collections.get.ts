@@ -1,3 +1,4 @@
+import { createError } from 'nitro/h3'
 import { defineCachedHandler } from 'nitro/cache'
 
 const USERNAME = '1140496'
@@ -64,7 +65,11 @@ export default defineCachedHandler(async (event) => {
   if (![1, 2, 3, 4, 6].includes(subjectType))
     throw new Error('Invalid subject_type')
 
-  const data = await fetchCollections(subjectType)
+  const data = await fetchCollections(subjectType).catch((error) => {
+    // Upstream failures are not this client's fault, and the plain 500 told nobody anything.
+    console.error('[collections] Bangumi request failed:', error)
+    throw createError({ statusCode: 502, statusMessage: 'Bangumi request failed' })
+  })
   return Object.fromEntries(
     Object.entries(CATEGORIES).map(([key, type]) => [
       key,

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vp dev",
+    "dev": "NODE_OPTIONS=--dns-result-order=ipv4first vp dev",
     "build": "vp build",
     "deploy": "vp build && wrangler deploy --config .output/server/wrangler.json",
     "preview": "vp preview",
