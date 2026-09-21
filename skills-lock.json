@@ -103,6 +103,12 @@
       "skillPath": "skills/turborepo/SKILL.md",
       "computedHash": "fda851d916bbee5b78446b9a22510e7f38aefdfab57f93de6e0bccbb5b0b537a"
     },
+    "typesafe-ai": {
+      "source": "typesafe-ai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/typesafe-ai/SKILL.md",
+      "computedHash": "9cd84c5e535dec8dec59917c110f9c00b4a61faadb86b432ec7e41051170af12"
+    },
     "unocss": {
       "source": "kvoon3/skills",
       "sourceType": "github",
