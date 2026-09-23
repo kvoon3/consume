@@ -63,10 +63,10 @@ interface Shape {
 }
 
 const SHAPES: Record<SubjectType, Shape> = {
-  1: { kind: 'book', ratio: 1.42, thickness: 0.3 },
+  1: { kind: 'book', ratio: 1.42, thickness: 0.21 },
   2: { kind: 'disc', ratio: 1, thickness: 0 },
   3: { kind: 'disc', ratio: 1, thickness: 0 },
-  4: { kind: 'cart', ratio: 1.15, thickness: 0.3 },
+  4: { kind: 'cart', ratio: 1.149, thickness: 0.132 },
   6: { kind: 'disc', ratio: 1, thickness: 0 },
   podcast: { kind: 'card', ratio: 1, thickness: 0.04 },
 }
@@ -1063,12 +1063,12 @@ watch(() => props.items, () => {
    hard black band either — so the light falls off across the whole strip, the boards shadow its
    ends, and the leaf lines are laid at two periods so they never quite line up. */
 .piece.is-book .piece-edge {
-  background-color: rgb(219 211 195);
+  background-color: rgb(242 238 230);
   background-image:
     linear-gradient(to right, rgb(0 0 0 / 0.3) 0 4%, rgb(0 0 0 / 0.12) 15%, transparent 32% 68%, rgb(0 0 0 / 0.12) 85%, rgb(0 0 0 / 0.3) 96%),
     repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.04) 2px 3px),
     repeating-linear-gradient(to bottom, transparent 0 7px, rgb(0 0 0 / 0.035) 7px 9px),
-    linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.26));
+    linear-gradient(to bottom, rgb(0 0 0 / 0.12), rgb(0 0 0 / 0.26));
   border-radius: 0 0 3px 3px;
 }
 
@@ -1077,7 +1077,7 @@ watch(() => props.items, () => {
   background-image:
     repeating-linear-gradient(to right, transparent 0 2px, rgb(0 0 0 / 0.04) 2px 3px),
     repeating-linear-gradient(to right, transparent 0 7px, rgb(0 0 0 / 0.035) 7px 9px),
-    linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.26));
+    linear-gradient(to bottom, rgb(0 0 0 / 0.12), rgb(0 0 0 / 0.26));
 }
 
 /* Board covers are not knives: the corners are eased, and the board hinges just inside the spine. */
@@ -1095,45 +1095,52 @@ watch(() => props.items, () => {
   content: '';
 }
 
-/* A cartridge: dark shell, the artwork printed on a label the shell frames, a narrower grip block
-   stepped in above the body, and a grip recess in that block. The outline is what makes it a
-   cartridge — a plain rectangle with a picture on it reads as a phone. The recess is only ever a
-   shade of the shell, and it is painted over the sheen: a recess cannot be glossier than the face
-   around it, and a hole in the cover would show the floor through the piece. */
+/* A Game Pak, which is 65.5 x 57 x 7.5 mm: a body with bevelled bottom corners, a narrower grip
+   block stepped in above it, short ribbed grips stacked on that block's shoulders, a moulded plate
+   between them where the logo is, and the printed label below. The outline is what makes it a
+   cartridge — a plain rectangle with a picture on it reads as a phone. The ribs and the plate are
+   painted over the sheen: a moulded recess cannot be glossier than the face around it, and a hole
+   cut in the cover would show the floor through the piece. */
 .piece.is-cart .piece-edge {
   background-color: rgb(52 54 60);
-  /* the shell's moulding seam runs round the middle of its thickness, which is the only thing that
-     keeps the near face from reading as one flat slab of plastic */
+  /* the shell's moulding seam runs along the middle of its thickness, the one thing that keeps the
+     near face from reading as one flat slab of plastic */
   background-image:
-    linear-gradient(to bottom, transparent 0 40%, rgb(0 0 0 / 0.15) 44% 52%, rgb(255 255 255 / 0.06) 54% 57%, transparent 61%),
+    linear-gradient(to bottom, transparent 0 40%, rgb(0 0 0 / 0.26) 44% 52%, rgb(255 255 255 / 0.1) 54% 57%, transparent 61%),
     linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.5));
 }
 
-/* The seam has to run across the thickness, which is the height on the two long faces and the width
-   on the two ends. (The ends are the slivers at the sides — 3px of them — so their shading is left
-   running the way it does on the faces beside them.) */
+/* The seam has to run across the thickness — the height on the two long faces, the width on the two
+   ends. The ends are the slivers at the sides, so their shading is left running the other way. */
 .piece.is-cart .piece-edge.is-left,
 .piece.is-cart .piece-edge.is-right {
-  /* only the body has a side at all: the grip block is stepped in, and a full-height side would
-     poke out beside it as a detached sliver */
-  top: 22%;
-  height: 78%;
+  /* only the body has a side at all: the grip block is stepped in, and a full-height side would poke
+     out beside it as a detached sliver */
+  top: 28%;
+  height: 72%;
   background-image:
-    linear-gradient(to right, transparent 0 40%, rgb(0 0 0 / 0.15) 44% 52%, rgb(255 255 255 / 0.06) 54% 57%, transparent 61%),
+    linear-gradient(to right, transparent 0 40%, rgb(0 0 0 / 0.26) 44% 52%, rgb(255 255 255 / 0.1) 54% 57%, transparent 61%),
     linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.5));
 }
 
 .piece.is-cart .piece-cover {
   background-color: rgb(52 54 60);
-  clip-path: polygon(0 100%, 100% 100%, 100% 22%, 95% 22%, 95% 7%, 91% 2%, 9% 2%, 5% 7%, 5% 22%, 0 22%);
-  /* the cart's shadow has to follow the outline the clip cut, or a rectangular halo hangs in the
-     air beside the grip — a drop shadow is the one shadow that follows a clipped shape */
+  clip-path: polygon(6% 100%, 94% 100%, 100% 94%, 100% 28%, 91% 28%, 91% 8%, 87% 3%, 13% 3%, 9% 8%, 9% 28%, 0 28%, 0 94%);
+  /* the grip ribs */
+  background-image:
+    repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.14) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.14) 0 1px, transparent 1px 5px);
+  background-position: 11% 4%, 79% 4%;
+  background-repeat: no-repeat;
+  background-size: 14% 22%, 14% 22%;
+  /* the shadow has to follow the outline the clip cut, or a rectangular halo hangs in the air beside
+     the grip — a drop shadow is the one shadow that follows a clipped shape */
   filter: drop-shadow(0 0 3px rgb(0 0 0 / 0.35));
 }
 
 .piece.is-cart {
   box-shadow: none;
-  /* the clip cuts the shoulders away, so the piece must not be grabbable there either — the floor
+  /* the clip cuts the shoulders away, so the piece must not be grabbable there either: the floor
      showing through the step belongs to whatever is behind it */
   pointer-events: none;
 }
@@ -1143,23 +1150,22 @@ watch(() => props.items, () => {
   pointer-events: auto;
 }
 
+/* the moulded plate on the grip block, where "GAME BOY" is embossed */
 .piece.is-cart .piece-cover::after {
   position: absolute;
-  top: 4%;
-  left: 30%;
-  width: 40%;
-  height: 14%;
-  /* a recessed grip, ribbed like a shell moulded for a thumb */
-  background-image:
-    repeating-linear-gradient(to right, transparent 0 3px, rgb(255 255 255 / 0.08) 3px 4px),
-    radial-gradient(ellipse at 50% 100%, rgb(28 30 34) 0 66%, transparent 67%),
-    radial-gradient(ellipse at 50% 100%, rgb(255 255 255 / 0.2) 0 68%, transparent 69%);
+  top: 7%;
+  left: 22%;
+  width: 56%;
+  height: 16%;
+  border-radius: 5px;
+  background-image: linear-gradient(to bottom, rgb(0 0 0 / 0.2), rgb(255 255 255 / 0.05));
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12), inset 0 -1px 0 rgb(0 0 0 / 0.3);
   content: '';
 }
 
 .piece.is-cart img {
   position: absolute;
-  inset: 25% 9% 8%;
+  inset: 30% 15% 15%;
   width: auto;
   height: auto;
   border-radius: 2px;
@@ -1270,11 +1276,6 @@ watch(() => props.items, () => {
     repeating-linear-gradient(0deg, transparent 0 79px, rgb(255 255 255 / 0.03) 79px 80px),
     linear-gradient(to bottom, rgb(24 24 24), rgb(17 17 17) 60%, rgb(12 12 12));
   box-shadow: inset 0 12px 18px rgb(0 0 0 / 0.45);
-}
-
-.dark .piece.is-book .piece-edge {
-  /* The page block is lighter than the floor in the dark, as it is darker than it in the light. */
-  background-color: rgb(74 72 68);
 }
 
 /* A book's cover is paper too, so the slate behind a cover that has not loaded yet cannot stay
