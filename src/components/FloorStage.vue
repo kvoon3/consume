@@ -1057,50 +1057,109 @@ watch(() => props.items, () => {
   transform-origin: 0 50%;
 }
 
-/* A book's thickness is a page block: paper, the grain of the pages running along it, and a fold
-   that darkens from the crease at the cover down to the cut edge. It has to be a good deal darker
-   than the floor or the depth of a lying book vanishes into it. (The far face is behind the cover
-   and the two ends are seen edge-on, so they share the near face's shading or wear the spine.) */
+/* A book's thickness is a page block: warm paper, the grain of the pages running along it, and a
+   fold that darkens from the crease at the cover down to the cut edge. It has to be a good deal
+   darker than the floor or the depth of a lying book vanishes into it, and it must not read as one
+   hard black band either — so the light falls off across the whole strip, the boards shadow its
+   ends, and the leaf lines are laid at two periods so they never quite line up. */
 .piece.is-book .piece-edge {
-  background-color: rgb(212 205 190);
+  background-color: rgb(219 211 195);
   background-image:
-    repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.07) 2px 3px),
-    linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.34));
+    linear-gradient(to right, rgb(0 0 0 / 0.3) 0 4%, rgb(0 0 0 / 0.12) 15%, transparent 32% 68%, rgb(0 0 0 / 0.12) 85%, rgb(0 0 0 / 0.3) 96%),
+    repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.04) 2px 3px),
+    repeating-linear-gradient(to bottom, transparent 0 7px, rgb(0 0 0 / 0.035) 7px 9px),
+    linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.26));
+  border-radius: 0 0 3px 3px;
 }
 
 .piece.is-book .piece-edge.is-left,
 .piece.is-book .piece-edge.is-right {
-  background-image: repeating-linear-gradient(to right, transparent 0 2px, rgb(0 0 0 / 0.07) 2px 3px);
+  background-image:
+    repeating-linear-gradient(to right, transparent 0 2px, rgb(0 0 0 / 0.04) 2px 3px),
+    repeating-linear-gradient(to right, transparent 0 7px, rgb(0 0 0 / 0.035) 7px 9px),
+    linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.26));
 }
 
-/* A cartridge: dark shell, the artwork printed on a label the shell frames, and a grip bitten out of
-   the top edge. The bite is only ever a shade of the shell, so it survives the dark theme, and it is
-   painted over the sheen — a recess cannot be glossier than the face around it. */
+/* Board covers are not knives: the corners are eased, and the board hinges just inside the spine. */
+.piece.is-book .piece-cover {
+  border-radius: 4px;
+}
+
+.piece.is-book .piece-cover::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 8%;
+  background-image: linear-gradient(to right, transparent 0 20%, rgb(0 0 0 / 0.2) 30%, rgb(0 0 0 / 0.04) 55%, rgb(255 255 255 / 0.14) 72%, transparent 100%);
+  content: '';
+}
+
+/* A cartridge: dark shell, the artwork printed on a label the shell frames, a narrower grip block
+   stepped in above the body, and a grip recess in that block. The outline is what makes it a
+   cartridge — a plain rectangle with a picture on it reads as a phone. The recess is only ever a
+   shade of the shell, and it is painted over the sheen: a recess cannot be glossier than the face
+   around it, and a hole in the cover would show the floor through the piece. */
 .piece.is-cart .piece-edge {
   background-color: rgb(52 54 60);
-  background-image: linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.5));
+  /* the shell's moulding seam runs round the middle of its thickness, which is the only thing that
+     keeps the near face from reading as one flat slab of plastic */
+  background-image:
+    linear-gradient(to bottom, transparent 0 40%, rgb(0 0 0 / 0.15) 44% 52%, rgb(255 255 255 / 0.06) 54% 57%, transparent 61%),
+    linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.5));
+}
+
+/* The seam has to run across the thickness, which is the height on the two long faces and the width
+   on the two ends. (The ends are the slivers at the sides — 3px of them — so their shading is left
+   running the way it does on the faces beside them.) */
+.piece.is-cart .piece-edge.is-left,
+.piece.is-cart .piece-edge.is-right {
+  /* only the body has a side at all: the grip block is stepped in, and a full-height side would
+     poke out beside it as a detached sliver */
+  top: 22%;
+  height: 78%;
+  background-image:
+    linear-gradient(to right, transparent 0 40%, rgb(0 0 0 / 0.15) 44% 52%, rgb(255 255 255 / 0.06) 54% 57%, transparent 61%),
+    linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.5));
 }
 
 .piece.is-cart .piece-cover {
-  border-radius: 3px 3px 2px 2px;
   background-color: rgb(52 54 60);
+  clip-path: polygon(0 100%, 100% 100%, 100% 22%, 95% 22%, 95% 7%, 91% 2%, 9% 2%, 5% 7%, 5% 22%, 0 22%);
+  /* the cart's shadow has to follow the outline the clip cut, or a rectangular halo hangs in the
+     air beside the grip — a drop shadow is the one shadow that follows a clipped shape */
+  filter: drop-shadow(0 0 3px rgb(0 0 0 / 0.35));
+}
+
+.piece.is-cart {
+  box-shadow: none;
+  /* the clip cuts the shoulders away, so the piece must not be grabbable there either — the floor
+     showing through the step belongs to whatever is behind it */
+  pointer-events: none;
+}
+
+.piece.is-cart .piece-cover,
+.piece.is-cart .piece-edge {
+  pointer-events: auto;
 }
 
 .piece.is-cart .piece-cover::after {
   position: absolute;
-  top: 0;
-  left: 33%;
-  width: 34%;
-  height: 18%;
+  top: 4%;
+  left: 30%;
+  width: 40%;
+  height: 14%;
+  /* a recessed grip, ribbed like a shell moulded for a thumb */
   background-image:
+    repeating-linear-gradient(to right, transparent 0 3px, rgb(255 255 255 / 0.08) 3px 4px),
     radial-gradient(ellipse at 50% 100%, rgb(28 30 34) 0 66%, transparent 67%),
-    radial-gradient(ellipse at 50% 100%, rgb(255 255 255 / 0.22) 0 68%, transparent 69%);
+    radial-gradient(ellipse at 50% 100%, rgb(255 255 255 / 0.2) 0 68%, transparent 69%);
   content: '';
 }
 
 .piece.is-cart img {
   position: absolute;
-  inset: 21% 7% 7%;
+  inset: 25% 9% 8%;
   width: auto;
   height: auto;
   border-radius: 2px;
