@@ -1066,8 +1066,7 @@ watch(() => props.items, () => {
   background-color: rgb(242 238 230);
   background-image:
     linear-gradient(to right, rgb(0 0 0 / 0.3) 0 4%, rgb(0 0 0 / 0.12) 15%, transparent 32% 68%, rgb(0 0 0 / 0.12) 85%, rgb(0 0 0 / 0.3) 96%),
-    repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.04) 2px 3px),
-    repeating-linear-gradient(to bottom, transparent 0 7px, rgb(0 0 0 / 0.035) 7px 9px),
+    repeating-linear-gradient(to bottom, transparent 0 1px, rgb(0 0 0 / 0.025) 1px 2px),
     linear-gradient(to bottom, rgb(0 0 0 / 0.12), rgb(0 0 0 / 0.26));
   border-radius: 0 0 3px 3px;
 }
@@ -1075,8 +1074,7 @@ watch(() => props.items, () => {
 .piece.is-book .piece-edge.is-left,
 .piece.is-book .piece-edge.is-right {
   background-image:
-    repeating-linear-gradient(to right, transparent 0 2px, rgb(0 0 0 / 0.04) 2px 3px),
-    repeating-linear-gradient(to right, transparent 0 7px, rgb(0 0 0 / 0.035) 7px 9px),
+    repeating-linear-gradient(to right, transparent 0 1px, rgb(0 0 0 / 0.025) 1px 2px),
     linear-gradient(to bottom, rgb(0 0 0 / 0.12), rgb(0 0 0 / 0.26));
 }
 
@@ -1125,7 +1123,7 @@ watch(() => props.items, () => {
 
 .piece.is-cart .piece-cover {
   background-color: rgb(52 54 60);
-  clip-path: polygon(6% 100%, 94% 100%, 100% 94%, 100% 28%, 91% 28%, 91% 8%, 87% 3%, 13% 3%, 9% 8%, 9% 28%, 0 28%, 0 94%);
+  clip-path: polygon(0 100%, 100% 100%, 100% 28%, 91% 28%, 91% 8%, 87% 3%, 13% 3%, 9% 8%, 9% 28%, 0 28%);
   /* the grip ribs */
   background-image:
     repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.14) 0 1px, transparent 1px 5px),
@@ -1153,21 +1151,24 @@ watch(() => props.items, () => {
 /* the moulded plate on the grip block, where "GAME BOY" is embossed */
 .piece.is-cart .piece-cover::after {
   position: absolute;
-  top: 7%;
-  left: 22%;
-  width: 56%;
-  height: 16%;
-  border-radius: 5px;
-  background-image: linear-gradient(to bottom, rgb(0 0 0 / 0.2), rgb(255 255 255 / 0.05));
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12), inset 0 -1px 0 rgb(0 0 0 / 0.3);
+  top: 8%;
+  left: 28%;
+  width: 44%;
+  height: 15%;
+  border-radius: 8px;
+  background-image: linear-gradient(to bottom, rgb(0 0 0 / 0.22) 0 45%, rgb(255 255 255 / 0.06));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.16), inset 0 -1px 0 rgb(0 0 0 / 0.35);
   content: '';
 }
 
 .piece.is-cart img {
+  /* `inset` with `width: auto` does not stretch a replaced element — it falls back to the image's
+     intrinsic size, which runs off the bottom of the label and gets clipped by the cover. Size it. */
   position: absolute;
-  inset: 30% 15% 15%;
-  width: auto;
-  height: auto;
+  top: 30%;
+  left: 15%;
+  width: 70%;
+  height: 55%;
   border-radius: 2px;
   box-shadow: 0 0 0 1px rgb(0 0 0 / 0.45);
 }
