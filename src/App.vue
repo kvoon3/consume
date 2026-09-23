@@ -10,7 +10,7 @@ import type { CollectionSection } from './components/CollectionTable.vue'
 
 import CollectionTable from './components/CollectionTable.vue'
 import CoverBackdrop from './components/CoverBackdrop.vue'
-import DiscStage from './components/DiscStage.vue'
+import FloorStage from './components/FloorStage.vue'
 import DitherLab from './components/DitherLab.vue'
 import RetroCover from './components/RetroCover.vue'
 import TasteSummary from './components/TasteSummary.vue'
@@ -202,7 +202,7 @@ function displayTitle(item: MediaItem) {
           <h2 class="text-muted mb-3 text-[10px] font-medium tracking-widest">
             {{ t.pile }}
           </h2>
-          <DiscStage :items="items" :subject="activeSubject" />
+          <FloorStage :items="items" :subject="activeSubject" />
         </section>
 
         <TasteSummary :items="tasteItems" :loading="loading" :spotify-visible="activeSubject === 3" :collections="collections" :subject="activeSubject" />

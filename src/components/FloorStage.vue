@@ -53,7 +53,7 @@ const pickSound = defineSound({
   gain: 0.06,
 })
 
-interface Disc {
+interface Piece {
   body: Matter.Body
   el: HTMLElement
   home: { x: number, y: number }
@@ -62,7 +62,7 @@ interface Disc {
   spin: number
 }
 
-// A floor of discs, seen in perspective. matter-js keeps working in the plane's own
+// A floor of pieces, seen in perspective. matter-js keeps working in the plane's own
 // coordinates — its (x, y) is the scene's (x, z) — so the physics stays 2D on a surface that
 // is drawn tilted, and nothing here has to know about the projection except the pointer.
 const stage = ref<HTMLElement>()
@@ -73,20 +73,20 @@ const hud = ref<HTMLElement>()
 const HORIZON = 0.42
 const PERSPECTIVE = 1000
 const TILT_DEG = 55
-// How far a picked disc floats toward the camera, in the same pixels as the plane's own
+// How far a picked piece floats toward the camera, in the same pixels as the plane's own
 // coordinates: off its surface, and in front of anything else at the row's depth.
 const LIFT = 56
 // And how high the row hangs, as a share of the stage: clear of the floor, whose far edge and
-// the discs on it stop at the horizon line.
+// the pieces on it stop at the horizon line.
 const ROW_Y = 0.28
 
 const hovered = shallowRef<MediaItem>()
 const hoverId = ref<string>()
-// Nothing on the floor moves until it is grabbed: hovering only lights a disc up and labels it.
+// Nothing on the floor moves until it is grabbed: hovering only lights a piece up and labels it.
 const heldId = ref<string>()
-// Picked discs leave the pile and stand in a row through the middle of the stage, in pick order.
+// Picked pieces leave the pile and stand in a row through the middle of the stage, in pick order.
 const picked = ref<string[]>([])
-// Mid-flight discs hold a transform transition; the row and the floor both leave them alone
+// Mid-flight pieces hold a transform transition; the row and the floor both leave them alone
 // until they land.
 const flying = ref(new Set<string>())
 
@@ -96,7 +96,7 @@ const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 const engine = Matter.Engine.create({ gravity: { x: 0, y: 0 } })
 engine.enableSleeping = true
 
-let discs: Disc[] = []
+let pieces: Piece[] = []
 let walls: Matter.Body[] = []
 let frame = 0
 let radius = 24
@@ -168,22 +168,22 @@ function relayout() {
   const next = Math.max(10, Math.min(cell.x, cell.y) * 0.42)
   const scale = radius ? next / radius : 1
   radius = next
-  el.style.setProperty('--disc-size', `${radius * 2}px`)
+  el.style.setProperty('--piece-size', `${radius * 2}px`)
 
   const margin = radius + 6
   const inner = { x: width - margin * 2, y: planeHeight - margin * 2 }
 
-  discs.forEach((disc, index) => {
+  pieces.forEach((piece, index) => {
     const column = index % columns
     const row = Math.floor(index / columns)
-    disc.home = {
-      x: margin + ((column + 0.5 + (seed(disc.id, 1) - 0.5) * 0.62) / columns) * inner.x,
-      y: margin + ((row + 0.5 + (seed(disc.id, 2) - 0.5) * 0.62) / rows) * inner.y,
+    piece.home = {
+      x: margin + ((column + 0.5 + (seed(piece.id, 1) - 0.5) * 0.62) / columns) * inner.x,
+      y: margin + ((row + 0.5 + (seed(piece.id, 2) - 0.5) * 0.62) / rows) * inner.y,
     }
     if (scale !== 1)
-      Matter.Body.set(disc.body, 'circleRadius', radius)
-    Matter.Body.setPosition(disc.body, disc.home)
-    Matter.Body.setVelocity(disc.body, { x: 0, y: 0 })
+      Matter.Body.set(piece.body, 'circleRadius', radius)
+    Matter.Body.setPosition(piece.body, piece.home)
+    Matter.Body.setVelocity(piece.body, { x: 0, y: 0 })
   })
 
   for (const wall of walls)
@@ -207,7 +207,7 @@ function build() {
   width = el.clientWidth
   height = el.clientHeight
 
-  const nodes = el.querySelectorAll<HTMLElement>('[data-disc]')
+  const nodes = el.querySelectorAll<HTMLElement>('[data-piece]')
   props.items.forEach((item, index) => {
     const node = nodes[index]
     if (!node)
@@ -221,7 +221,7 @@ function build() {
     })
     Matter.Sleeping.set(body, true)
     Matter.Composite.add(engine.world, body)
-    discs.push({ body, el: node, home: { x: width / 2, y: planeHeight / 2 }, id, item, spin: (seed(id, 3) - 0.5) * 14 })
+    pieces.push({ body, el: node, home: { x: width / 2, y: planeHeight / 2 }, id, item, spin: (seed(id, 3) - 0.5) * 14 })
   })
 
   relayout()
@@ -229,7 +229,7 @@ function build() {
 
 function clearWorld() {
   Matter.Composite.clear(engine.world, false)
-  discs = []
+  pieces = []
   walls = []
   dragConstraint = undefined
   hovered.value = undefined
@@ -240,10 +240,10 @@ function clearWorld() {
   hudId = undefined
 }
 
-// The row of picked discs. A picked disc stands up out of the floor and floats toward the
+// The row of picked pieces. A picked piece stands up out of the floor and floats toward the
 // camera, which scales it about the perspective origin — so the row is laid out in unlifted
 // screen space, at the one depth that projects onto the stage's own centre line, the point the
-// lift cannot move. `dy` then carries the row up off that line: it is a lift in the disc's own
+// lift cannot move. `dy` then carries the row up off that line: it is a lift in the piece's own
 // frame, which the stand-up has already squared to the screen, so 1px of it is 1px of rise.
 function rowPlan() {
   const depth = height / (2 * Math.cos(tilt))
@@ -261,19 +261,19 @@ function rowPlan() {
   }
 }
 
-// Where a disc belongs: its point on the plane, its offset in the plane's frame, and its lift.
-function place(disc: Disc) {
-  const row = picked.value.indexOf(disc.id)
+// Where a piece belongs: its point on the plane, its offset in the plane's frame, and its lift.
+function place(piece: Piece) {
+  const row = picked.value.indexOf(piece.id)
   if (row < 0)
-    return { dy: 0, grow: 1, up: false, ...disc.body.position }
+    return { dy: 0, grow: 1, up: false, ...piece.body.position }
   const plan = rowPlan()
   return { dy: plan.dy, grow: plan.grow, up: true, ...plan.slot(row) }
 }
 
-// Where a disc is drawn, in stage pixels: its centre, its on-screen radius, and whether it is
+// Where a piece is drawn, in stage pixels: its centre, its on-screen radius, and whether it is
 // standing in the row.
-function screenOf(disc: Disc) {
-  const { dy, grow, up, x, y } = place(disc)
+function screenOf(piece: Piece) {
+  const { dy, grow, up, x, y } = place(piece)
   const depth = planeHeight - y
   const scale = (PERSPECTIVE / (PERSPECTIVE + depth * Math.sin(tilt))) * grow
   return {
@@ -284,38 +284,38 @@ function screenOf(disc: Disc) {
   }
 }
 
-// One transform for both places a disc can be: on the floor, or standing in the row. The
+// One transform for both places a piece can be: on the floor, or standing in the row. The
 // function list is the same either way, so the browser has something to interpolate between,
-// and the spin is in-plane on the floor and on the disc's face once it has stood up. Hovering
-// never moves a disc, it only lights up; a grabbed one lifts a hair off the floor.
-function transform(disc: Disc, { dy, up, x, y }: ReturnType<typeof place>) {
-  const held = heldId.value === disc.id
-  const hover = hoverId.value === disc.id
+// and the spin is in-plane on the floor and on the piece's face once it has stood up. Hovering
+// never moves a piece, it only lights up; a grabbed one lifts a hair off the floor.
+function transform(piece: Piece, { dy, up, x, y }: ReturnType<typeof place>) {
+  const held = heldId.value === piece.id
+  const hover = hoverId.value === piece.id
   return `translate3d(${(x - radius).toFixed(2)}px, ${(y - radius).toFixed(2)}px, ${up ? 0 : 2}px)`
-    + ` rotateX(${up ? -TILT_DEG : 0}deg) translateY(${dy.toFixed(2)}px) rotate(${disc.spin.toFixed(2)}deg)`
+    + ` rotateX(${up ? -TILT_DEG : 0}deg) translateY(${dy.toFixed(2)}px) rotate(${piece.spin.toFixed(2)}deg)`
     + ` translateZ(${up ? LIFT : held ? 7 : 0}px) scale(${held ? 1.1 : hover ? 1.06 : 1})`
 }
 
-// A flight is over: let physics have the disc back, where it left off.
-function land(disc: Disc) {
-  flying.value.delete(disc.id)
-  if (picked.value.includes(disc.id) || Matter.Composite.allBodies(engine.world).includes(disc.body))
+// A flight is over: let physics have the piece back, where it left off.
+function land(piece: Piece) {
+  flying.value.delete(piece.id)
+  if (picked.value.includes(piece.id) || Matter.Composite.allBodies(engine.world).includes(piece.body))
     return
-  Matter.Composite.add(engine.world, disc.body)
-  Matter.Sleeping.set(disc.body, false)
+  Matter.Composite.add(engine.world, piece.body)
+  Matter.Sleeping.set(piece.body, false)
   wake()
 }
 
-// A click either lifts a disc out of the pile into the row, or drops it back on the floor, and
-// either way it shifts every other disc in the row sideways — so they all fly, and the row closes
-// up or opens out instead of snapping around the disc that left or arrived.
-function toggle(disc: Disc) {
-  void setRow(picked.value.includes(disc.id)
-    ? picked.value.filter(id => id !== disc.id)
-    : [...picked.value, disc.id])
+// A click either lifts a piece out of the pile into the row, or drops it back on the floor, and
+// either way it shifts every other piece in the row sideways — so they all fly, and the row closes
+// up or opens out instead of snapping around the piece that left or arrived.
+function toggle(piece: Piece) {
+  void setRow(picked.value.includes(piece.id)
+    ? picked.value.filter(id => id !== piece.id)
+    : [...picked.value, piece.id])
 }
 
-// Move the row to `next`, whichever discs that leaves in or out of it.
+// Move the row to `next`, whichever pieces that leaves in or out of it.
 async function setRow(next: string[]) {
   const moved = [...picked.value, ...next]
   const arrivals = next.filter(id => !picked.value.includes(id))
@@ -325,19 +325,19 @@ async function setRow(next: string[]) {
     moved.forEach(id => flying.value.add(id))
   if (arrivals.length) {
     pickSound()
-    for (const disc of discs) {
-      if (arrivals.includes(disc.id))
-        Matter.Composite.remove(engine.world, disc.body)
+    for (const piece of pieces) {
+      if (arrivals.includes(piece.id))
+        Matter.Composite.remove(engine.world, piece.body)
     }
   }
   // Vue puts `is-flying` on the elements in this same flush, so the transforms written right
-  // after are ones the browser can see change: the discs stand up as they fly.
+  // after are ones the browser can see change: the pieces stand up as they fly.
   await nextTick()
   sync()
   if (reduced)
-    for (const disc of discs) {
-      if (!picked.value.includes(disc.id))
-        land(disc)
+    for (const piece of pieces) {
+      if (!picked.value.includes(piece.id))
+        land(piece)
     }
 }
 
@@ -419,25 +419,25 @@ function onAskInput() {
 // Transforms go straight to the DOM, so Vue re-renders never fight the physics.
 function sync() {
   if (hovered.value && hud.value) {
-    const disc = discs.find(entry => entry.id === hoverId.value)
-    if (disc) {
-      const { r, up, x: px, y: py } = screenOf(disc)
-      // The label is centred on its disc, so it needs its own width — which only changes when the
-      // hovered disc does, so this stays off the per-frame path.
-      if (hudId !== disc.id || !hudWidth) {
-        hudId = disc.id
+    const piece = pieces.find(entry => entry.id === hoverId.value)
+    if (piece) {
+      const { r, up, x: px, y: py } = screenOf(piece)
+      // The label is centred on its piece, so it needs its own width — which only changes when the
+      // hovered piece does, so this stays off the per-frame path.
+      if (hudId !== piece.id || !hudWidth) {
+        hudId = piece.id
         hudWidth = hud.value.offsetWidth
       }
       const half = hudWidth / 2
       const x = Math.max(8 + half, Math.min(width - 8 - half, px - half))
-      // Under a disc in the row: the air above it belongs to the ask.
+      // Under a piece in the row: the air above it belongs to the ask.
       const y = Math.max(4, Math.min(height - 24, up ? py + r + 8 : py - r - 34))
       hud.value.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`
     }
   }
 
-  for (const disc of discs)
-    disc.el.style.transform = transform(disc, place(disc))
+  for (const piece of pieces)
+    piece.el.style.transform = transform(piece, place(piece))
 }
 
 function tick() {
@@ -452,7 +452,7 @@ function tick() {
   sync()
   if (dragConstraint)
     return
-  if (discs.every(disc => disc.body.isSleeping))
+  if (pieces.every(piece => piece.body.isSleeping))
     awake = false
 }
 
@@ -461,12 +461,12 @@ function wake() {
     awake = true
 }
 
-function engage(disc: Disc | undefined) {
-  if (disc?.id === hoverId.value)
+function engage(piece: Piece | undefined) {
+  if (piece?.id === hoverId.value)
     return
-  hovered.value = disc?.item
-  hoverId.value = disc?.id
-  if (disc)
+  hovered.value = piece?.item
+  hoverId.value = piece?.id
+  if (piece)
     hoverSound()
   // The lift and the label position are written by the loop, so hovering needs one frame.
   if (reduced)
@@ -475,30 +475,30 @@ function engage(disc: Disc | undefined) {
 }
 
 function under(point: { x: number, y: number }) {
-  let best: Disc | undefined
+  let best: Piece | undefined
   let bestDistance = Number.POSITIVE_INFINITY
-  for (const disc of discs) {
-    if (picked.value.includes(disc.id))
+  for (const piece of pieces) {
+    if (picked.value.includes(piece.id))
       continue
-    const { x, y } = disc.body.position
+    const { x, y } = piece.body.position
     const distance = Math.hypot(x - point.x, y - point.y)
     if (distance < radius * 1.3 && distance < bestDistance) {
-      best = disc
+      best = piece
       bestDistance = distance
     }
   }
   return best
 }
 
-// A disc in the row is off the floor, so it is hit in screen space instead.
+// A piece in the row is off the floor, so it is hit in screen space instead.
 function underRow(clientX: number, clientY: number) {
   const rect = stage.value!.getBoundingClientRect()
   const x = clientX - rect.left
   const y = clientY - rect.top
-  return discs.find((disc) => {
-    if (!picked.value.includes(disc.id))
+  return pieces.find((piece) => {
+    if (!picked.value.includes(piece.id))
       return false
-    const screen = screenOf(disc)
+    const screen = screenOf(piece)
     return Math.hypot(screen.x - x, screen.y - y) < Math.max(screen.r, 12)
   })
 }
@@ -523,17 +523,17 @@ function onPointerDown(event: PointerEvent) {
   const point = toPlane(event.clientX, event.clientY)
   pointerStart = point
   dragged = false
-  // A disc in the row is not grabbable — a constraint would still pull its body, which is off
+  // A piece in the row is not grabbable — a constraint would still pull its body, which is off
   // the floor — it goes back on click instead.
-  const disc = underRow(event.clientX, event.clientY) ?? under(point)
-  if (!disc || picked.value.includes(disc.id))
+  const piece = underRow(event.clientX, event.clientY) ?? under(point)
+  if (!piece || picked.value.includes(piece.id))
     return
   // Grabbed: it follows the cursor while held, and stays where it is dropped.
-  heldId.value = disc.id
+  heldId.value = piece.id
   event.preventDefault()
-  Matter.Sleeping.set(disc.body, false)
+  Matter.Sleeping.set(piece.body, false)
   dragConstraint = Matter.Constraint.create({
-    bodyB: disc.body,
+    bodyB: piece.body,
     damping: 0.35,
     length: 0,
     pointA: point,
@@ -559,19 +559,19 @@ function onClick(event: MouseEvent, id: string) {
     dragged = false
     return
   }
-  const disc = discs.find(entry => entry.id === id)
-  if (disc)
-    void toggle(disc)
+  const piece = pieces.find(entry => entry.id === id)
+  if (piece)
+    void toggle(piece)
 }
 
-// A disc that has finished its flight either way is no longer mid-air.
+// A piece that has finished its flight either way is no longer mid-air.
 function onTransitionEnd(event: TransitionEvent) {
   if (event.propertyName !== 'transform')
     return
-  const id = (event.target as HTMLElement).dataset.disc
-  const disc = id && discs.find(entry => entry.id === id)
-  if (disc)
-    land(disc)
+  const id = (event.target as HTMLElement).dataset.piece
+  const piece = id && pieces.find(entry => entry.id === id)
+  if (piece)
+    land(piece)
 }
 
 function onPointerLeave() {
@@ -622,7 +622,7 @@ watch(() => props.items, () => {
 <template>
   <div
     ref="stage"
-    class="disc-stage"
+    class="stage"
     @pointerdown="onPointerDown"
     @pointerleave="onPointerLeave"
     @pointermove="onPointerMove"
@@ -630,7 +630,7 @@ watch(() => props.items, () => {
     @transitionend="onTransitionEnd"
   >
     <form
-      class="disc-ask"
+      class="ask"
       :class="{ 'is-error': askState === 'error' }"
       @pointerdown.stop
       @submit.prevent="submit"
@@ -645,41 +645,41 @@ watch(() => props.items, () => {
       >
       <span
         v-if="askStatus"
-        class="disc-ask-state"
+        class="ask-state"
         :class="{ 'is-thinking': askState === 'thinking' }"
         aria-live="polite"
       >
         {{ askStatus }}
       </span>
     </form>
-    <div class="disc-world">
-      <div class="disc-floor" aria-hidden="true" />
+    <div class="world">
+      <div class="floor" aria-hidden="true" />
       <button
         v-for="item in items"
         :key="item.id"
         type="button"
-        class="disc"
+        class="piece"
         :class="{
           'is-held': heldId === String(item.id),
           'is-hover': hoverId === String(item.id),
           'is-picked': picked.includes(String(item.id)),
           'is-flying': flying.has(String(item.id)),
         }"
-        :data-disc="String(item.id)"
+        :data-piece="String(item.id)"
         :aria-label="title(item)"
         :aria-pressed="picked.includes(String(item.id))"
         @click="onClick($event, String(item.id))"
       >
-        <span class="disc-face">
+        <span class="piece-face">
           <img :src="item.cover" alt="" draggable="false" loading="lazy" decoding="async">
-          <span class="disc-sheen" aria-hidden="true" />
-          <span class="disc-ring" aria-hidden="true" />
+          <span class="piece-sheen" aria-hidden="true" />
+          <span class="piece-ring" aria-hidden="true" />
         </span>
       </button>
     </div>
 
     <Transition name="hud">
-      <p v-if="hovered" ref="hud" class="disc-hud">
+      <p v-if="hovered" ref="hud" class="hud">
         {{ title(hovered) }}
       </p>
     </Transition>
@@ -687,7 +687,7 @@ watch(() => props.items, () => {
 </template>
 
 <style scoped>
-.disc-stage {
+.stage {
   position: relative;
   height: min(56vh, 28rem);
   overflow: hidden;
@@ -703,7 +703,7 @@ watch(() => props.items, () => {
 
 /* The floor plane. Anchored on its near edge and tilted away, so its far edge projects onto
    the horizon line and everything inside it inherits the perspective. */
-.disc-world {
+.world {
   position: absolute;
   right: 0;
   bottom: 0;
@@ -714,7 +714,7 @@ watch(() => props.items, () => {
   transform-style: preserve-3d;
 }
 
-.disc-floor {
+.floor {
   position: absolute;
   inset: 0;
   background:
@@ -727,7 +727,7 @@ watch(() => props.items, () => {
 }
 
 /* Sits in the air above the row, which hangs below the horizon and never reaches this far up. */
-.disc-ask {
+.ask {
   position: absolute;
   top: 0.75rem;
   left: 50%;
@@ -746,15 +746,15 @@ watch(() => props.items, () => {
   backdrop-filter: blur(8px);
 }
 
-.disc-ask:focus-within {
+.ask:focus-within {
   border-color: rgb(23 23 23 / 0.5);
 }
 
-.disc-ask.is-error {
+.ask.is-error {
   border-color: rgb(220 38 38 / 0.6);
 }
 
-.disc-ask input {
+.ask input {
   min-width: 0;
   flex: 1;
   padding: 0;
@@ -767,12 +767,12 @@ watch(() => props.items, () => {
   outline: none;
 }
 
-.disc-ask input::placeholder {
+.ask input::placeholder {
   color: rgb(115 115 115);
 }
 
 /* What the last ask is doing: thinking, nothing found, or failed. */
-.disc-ask-state {
+.ask-state {
   flex-shrink: 0;
   color: rgb(115 115 115);
   font-size: 0.7rem;
@@ -780,48 +780,48 @@ watch(() => props.items, () => {
   white-space: nowrap;
 }
 
-.disc-ask.is-error .disc-ask-state {
+.ask.is-error .ask-state {
   color: rgb(220 38 38);
 }
 
 /* Waiting has nothing to move, so it only breathes. */
-.disc-ask-state.is-thinking {
-  animation: disc-ask-wait 1.1s ease-in-out infinite;
+.ask-state.is-thinking {
+  animation: ask-wait 1.1s ease-in-out infinite;
 }
 
-@keyframes disc-ask-wait {
+@keyframes ask-wait {
   50% {
     opacity: 0.35;
   }
 }
 
-.dark .disc-ask {
+.dark .ask {
   background: rgb(255 255 255 / 0.06);
 }
 
-.dark .disc-ask:focus-within {
+.dark .ask:focus-within {
   border-color: rgb(212 212 212 / 0.5);
 }
 
-.dark .disc-ask input::placeholder,
-.dark .disc-ask-state {
+.dark .ask input::placeholder,
+.dark .ask-state {
   color: rgb(163 163 163);
 }
 
-.dark .disc-ask.is-error {
+.dark .ask.is-error {
   border-color: rgb(248 113 113 / 0.6);
 }
 
-.dark .disc-ask.is-error .disc-ask-state {
+.dark .ask.is-error .ask-state {
   color: rgb(248 113 113);
 }
 
-.disc {
+.piece {
   position: absolute;
   top: 0;
   left: 0;
-  width: var(--disc-size, 3rem);
-  height: var(--disc-size, 3rem);
+  width: var(--piece-size, 3rem);
+  height: var(--piece-size, 3rem);
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -830,35 +830,35 @@ watch(() => props.items, () => {
   cursor: pointer;
   box-shadow: 0 2px 5px rgb(0 0 0 / 0.22);
   transform-origin: center;
-  /* `--disc-fly` holds the flight's own easing: 0ms unless the disc is moving between the
+  /* `--piece-fly` holds the flight's own easing: 0ms unless the piece is moving between the
      floor and the row. */
-  transition: opacity 260ms ease, filter 260ms ease, box-shadow 200ms ease, transform var(--disc-fly, 0ms);
+  transition: opacity 260ms ease, filter 260ms ease, box-shadow 200ms ease, transform var(--piece-fly, 0ms);
   will-change: transform;
   -webkit-user-drag: none;
   user-select: none;
 }
 
-.disc.is-flying {
-  --disc-fly: 520ms cubic-bezier(0.22, 1, 0.36, 1);
+.piece.is-flying {
+  --piece-fly: 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.disc.is-picked {
+.piece.is-picked {
   box-shadow: 0 10px 20px rgb(0 0 0 / 0.28);
 }
 
-.disc-face {
+.piece-face {
   position: absolute;
   inset: 0;
   overflow: hidden;
   border-radius: 50%;
-  /* The hub is punched through, so whatever lies under the disc shows in the hole.
-     The mask sits here, not on .disc: a mask clips to the border box, so hoisting it
-     would also erase the disc's shadow and its ring. */
+  /* The hub is punched through, so whatever lies under the piece shows in the hole.
+     The mask sits here, not on .piece: a mask clips to the border box, so hoisting it
+     would also erase the piece's shadow and its ring. */
   -webkit-mask-image: radial-gradient(circle at center, transparent 0 10.5%, #000 11.5%);
   mask-image: radial-gradient(circle at center, transparent 0 10.5%, #000 11.5%);
 }
 
-.disc img {
+.piece img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -866,7 +866,7 @@ watch(() => props.items, () => {
   pointer-events: none;
 }
 
-.disc-sheen {
+.piece-sheen {
   position: absolute;
   inset: 0;
   background: linear-gradient(118deg, rgb(255 255 255 / 0.26) 0%, rgb(255 255 255 / 0.04) 38%, transparent 55%);
@@ -874,29 +874,29 @@ watch(() => props.items, () => {
 }
 
 /* Rim around the punch: without it a hole in a white floor reads as a white dot. */
-.disc-ring {
+.piece-ring {
   position: absolute;
   inset: 0;
   background: radial-gradient(circle at center, transparent 0 10.8%, rgb(0 0 0 / 0.22) 11.6%, transparent 13.5%);
   pointer-events: none;
 }
 
-.disc.is-held {
+.piece.is-held {
   z-index: 5;
   box-shadow: 0 12px 22px rgb(0 0 0 / 0.32), 0 0 0 1px rgb(255 255 255 / 0.85);
 }
 
-.disc.is-hover {
+.piece.is-hover {
   z-index: 4;
   box-shadow: 0 4px 12px rgb(0 0 0 / 0.24), 0 0 0 1px rgb(255 255 255 / 0.7);
 }
 
-.disc:focus-visible {
+.piece:focus-visible {
   outline: 2px solid rgb(23 23 23 / 0.6);
   outline-offset: 3px;
 }
 
-.disc-hud {
+.hud {
   position: absolute;
   /* At the stage's origin: the transform written per frame is where the label actually goes. */
   top: 0;
@@ -930,13 +930,13 @@ watch(() => props.items, () => {
 /* Plain `.dark …`, not `:global(.dark) …`: this build drops `:global(...)` selectors outright,
    which also silently kills CollectionTable's dark highlight rules. `.dark` matches <html>
    (useTheme), so the scoped attribute on the selector's tail is all that is needed. */
-.dark .disc-stage {
+.dark .stage {
   background:
     radial-gradient(ellipse at 50% 92%, rgb(255 255 255 / 0.07), transparent 68%),
     rgb(9 9 9);
 }
 
-.dark .disc-floor {
+.dark .floor {
   background:
     repeating-linear-gradient(0deg, transparent 0 3px, rgb(255 255 255 / 0.025) 3px 4px),
     repeating-linear-gradient(90deg, transparent 0 79px, rgb(255 255 255 / 0.03) 79px 80px),
@@ -945,23 +945,23 @@ watch(() => props.items, () => {
   box-shadow: inset 0 12px 18px rgb(0 0 0 / 0.45);
 }
 
-.dark .disc-ring {
+.dark .piece-ring {
   background: radial-gradient(circle at center, transparent 0 10.8%, rgb(255 255 255 / 0.16) 11.6%, transparent 13.5%);
 }
 
-.dark .disc-hud {
+.dark .hud {
   /* The same faint wash the ask input wears, so both read as raised surfaces in the dark. */
   background: rgb(255 255 255 / 0.06);
   color: rgb(212 212 212);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .disc,
-  .disc-stage {
+  .piece,
+  .stage {
     transition: none;
   }
 
-  .disc-ask-state {
+  .ask-state {
     animation: none;
   }
 }
