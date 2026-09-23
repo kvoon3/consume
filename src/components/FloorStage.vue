@@ -1156,8 +1156,9 @@ watch(() => props.items, () => {
   width: 44%;
   height: 15%;
   border-radius: 8px;
-  background-image: linear-gradient(to bottom, rgb(0 0 0 / 0.22) 0 45%, rgb(255 255 255 / 0.06));
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.16), inset 0 -1px 0 rgb(0 0 0 / 0.35);
+  /* lit along its top and shadowed under its bottom, so the plate reads as raised rather than sunk */
+  background-image: linear-gradient(to bottom, rgb(255 255 255 / 0.1), rgb(0 0 0 / 0.18));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2), inset 0 -1px 0 rgb(0 0 0 / 0.4);
   content: '';
 }
 
