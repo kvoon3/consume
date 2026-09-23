@@ -154,9 +154,9 @@ function title(item: MediaItem) {
 }
 
 // The footprint a shape covers on the floor once turned by `angle`: the bounding box of a rotated
-// rectangle, in units of the piece's width. A disc is a square that a rotation cannot grow.
+// rectangle, in units of the piece's width. A disc or record is a square that a rotation cannot grow.
 function footprint(shape: Shape, angle: number) {
-  if (shape.kind === 'disc')
+  if (shape.kind === 'disc' || shape.kind === 'vinyl')
     return { x: 1, y: 1 }
   const cos = Math.abs(Math.cos(angle))
   const sin = Math.abs(Math.sin(angle))
@@ -984,12 +984,17 @@ watch(() => props.items, () => {
 }
 
 /* A disc is the flat plate it always was: round, the hub punched through, and a shadow that leans
-   away from the light because the disc never turns. It can keep the clip it always had, too — it has
-   no sides to flatten. */
-.piece.is-disc {
+   away from the light because the disc never turns. A record is as round and as flat as a disc, so
+   it shares the round plate and the shadow that leans away — but no hub clip, its punch is drawn by
+   the label plate itself. */
+.piece.is-disc,
+.piece.is-vinyl {
   border-radius: 50%;
-  overflow: hidden;
   box-shadow: 0 2px 5px rgb(0 0 0 / 0.22);
+}
+
+.piece.is-disc {
+  overflow: hidden;
 }
 
 .piece.is-flying {
@@ -1152,13 +1157,6 @@ watch(() => props.items, () => {
     radial-gradient(circle at center, rgb(38 38 42), rgb(8 8 10) 72%);
   -webkit-mask-image: radial-gradient(circle at center, transparent 0 2.6%, #000 3.4%);
   mask-image: radial-gradient(circle at center, transparent 0 2.6%, #000 3.4%);
-}
-
-/* A record is round, so its shadow has to be round too: the base shadow would be cast by the square
-   element box, and its corners show ~15px of grey halo beside the disc. */
-.piece.is-vinyl {
-  border-radius: 50%;
-  box-shadow: 0 2px 5px rgb(0 0 0 / 0.22);
 }
 
 .piece.is-vinyl img {
