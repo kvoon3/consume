@@ -57,7 +57,7 @@ const pickSound = defineSound({
 // cartridge, or a square card. `ratio` is height over width, and `thickness` is how deep the box is
 // as a share of its width — a disc has no box at all, so it stays the flat plate it always was.
 interface Shape {
-  kind: 'book' | 'card' | 'cart' | 'disc'
+  kind: 'book' | 'card' | 'disc' | 'vinyl'
   ratio: number
   thickness: number
 }
@@ -65,8 +65,8 @@ interface Shape {
 const SHAPES: Record<SubjectType, Shape> = {
   1: { kind: 'book', ratio: 1.42, thickness: 0.21 },
   2: { kind: 'disc', ratio: 1, thickness: 0 },
-  3: { kind: 'disc', ratio: 1, thickness: 0 },
-  4: { kind: 'cart', ratio: 1.149, thickness: 0.132 },
+  3: { kind: 'vinyl', ratio: 1, thickness: 0 },
+  4: { kind: 'disc', ratio: 1, thickness: 0 },
   6: { kind: 'disc', ratio: 1, thickness: 0 },
   podcast: { kind: 'card', ratio: 1, thickness: 0.04 },
 }
@@ -804,8 +804,8 @@ watch(() => props.items, () => {
         <template v-if="SHAPES[item.subjectType].kind !== 'disc'">
           <span class="piece-edge is-near" aria-hidden="true" />
           <span class="piece-edge is-far" aria-hidden="true" />
-          <span class="piece-edge is-left is-spine" aria-hidden="true" />
-          <span class="piece-edge is-right" aria-hidden="true" />
+          <span class="piece-edge is-left" aria-hidden="true" />
+          <span class="piece-edge is-right is-spine" aria-hidden="true" />
         </template>
       </button>
     </div>
@@ -973,8 +973,7 @@ watch(() => props.items, () => {
 }
 
 .piece.is-book,
-.piece.is-card,
-.piece.is-cart {
+.piece.is-card {
   transform-style: preserve-3d;
 }
 
@@ -1086,92 +1085,11 @@ watch(() => props.items, () => {
 .piece.is-book .piece-cover::after {
   position: absolute;
   top: 0;
+  right: 0;
   bottom: 0;
-  left: 0;
   width: 8%;
-  background-image: linear-gradient(to right, transparent 0 20%, rgb(0 0 0 / 0.2) 30%, rgb(0 0 0 / 0.04) 55%, rgb(255 255 255 / 0.14) 72%, transparent 100%);
+  background-image: linear-gradient(to left, transparent 0 20%, rgb(0 0 0 / 0.2) 30%, rgb(0 0 0 / 0.04) 55%, rgb(255 255 255 / 0.14) 72%, transparent 100%);
   content: '';
-}
-
-/* A Game Pak, which is 65.5 x 57 x 7.5 mm: a body with bevelled bottom corners, a narrower grip
-   block stepped in above it, short ribbed grips stacked on that block's shoulders, a moulded plate
-   between them where the logo is, and the printed label below. The outline is what makes it a
-   cartridge — a plain rectangle with a picture on it reads as a phone. The ribs and the plate are
-   painted over the sheen: a moulded recess cannot be glossier than the face around it, and a hole
-   cut in the cover would show the floor through the piece. */
-.piece.is-cart .piece-edge {
-  background-color: rgb(52 54 60);
-  /* the shell's moulding seam runs along the middle of its thickness, the one thing that keeps the
-     near face from reading as one flat slab of plastic */
-  background-image:
-    linear-gradient(to bottom, transparent 0 40%, rgb(0 0 0 / 0.26) 44% 52%, rgb(255 255 255 / 0.1) 54% 57%, transparent 61%),
-    linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.5));
-}
-
-/* The seam has to run across the thickness — the height on the two long faces, the width on the two
-   ends. The ends are the slivers at the sides, so their shading is left running the other way. */
-.piece.is-cart .piece-edge.is-left,
-.piece.is-cart .piece-edge.is-right {
-  /* only the body has a side at all: the grip block is stepped in, and a full-height side would poke
-     out beside it as a detached sliver */
-  top: 28%;
-  height: 72%;
-  background-image:
-    linear-gradient(to right, transparent 0 40%, rgb(0 0 0 / 0.26) 44% 52%, rgb(255 255 255 / 0.1) 54% 57%, transparent 61%),
-    linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.5));
-}
-
-.piece.is-cart .piece-cover {
-  background-color: rgb(52 54 60);
-  clip-path: polygon(0 100%, 100% 100%, 100% 28%, 91% 28%, 91% 8%, 87% 3%, 13% 3%, 9% 8%, 9% 28%, 0 28%);
-  /* the grip ribs */
-  background-image:
-    repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.14) 0 1px, transparent 1px 5px),
-    repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.14) 0 1px, transparent 1px 5px);
-  background-position: 11% 4%, 79% 4%;
-  background-repeat: no-repeat;
-  background-size: 14% 22%, 14% 22%;
-  /* the shadow has to follow the outline the clip cut, or a rectangular halo hangs in the air beside
-     the grip — a drop shadow is the one shadow that follows a clipped shape */
-  filter: drop-shadow(0 0 3px rgb(0 0 0 / 0.35));
-}
-
-.piece.is-cart {
-  box-shadow: none;
-  /* the clip cuts the shoulders away, so the piece must not be grabbable there either: the floor
-     showing through the step belongs to whatever is behind it */
-  pointer-events: none;
-}
-
-.piece.is-cart .piece-cover,
-.piece.is-cart .piece-edge {
-  pointer-events: auto;
-}
-
-/* the moulded plate on the grip block, where "GAME BOY" is embossed */
-.piece.is-cart .piece-cover::after {
-  position: absolute;
-  top: 8%;
-  left: 28%;
-  width: 44%;
-  height: 15%;
-  border-radius: 8px;
-  /* lit along its top and shadowed under its bottom, so the plate reads as raised rather than sunk */
-  background-image: linear-gradient(to bottom, rgb(255 255 255 / 0.1), rgb(0 0 0 / 0.18));
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2), inset 0 -1px 0 rgb(0 0 0 / 0.4);
-  content: '';
-}
-
-.piece.is-cart img {
-  /* `inset` with `width: auto` does not stretch a replaced element — it falls back to the image's
-     intrinsic size, which runs off the bottom of the label and gets clipped by the cover. Size it. */
-  position: absolute;
-  top: 30%;
-  left: 15%;
-  width: 70%;
-  height: 55%;
-  border-radius: 2px;
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.45);
 }
 
 /* A card is barely thicker than its print. */
@@ -1180,11 +1098,12 @@ watch(() => props.items, () => {
   background-image: linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.3));
 }
 
-/* The spine wears the cover's own left edge, stretched down the thickness. It sets the image only,
-   so the dark-mode colours below land on the same face without cleaving it off. */
-.piece.is-book .piece-edge.is-left.is-spine {
+/* A Japanese book opens the other way, so its spine is on the right, and the spine wears the
+   cover's own right edge stretched down the thickness. It sets the image only, so the dark-mode
+   colours land on the same face without cleaving it off. */
+.piece.is-book .piece-edge.is-right.is-spine {
   background-image: var(--piece-cover, none);
-  background-position: left center;
+  background-position: right center;
   background-repeat: no-repeat;
   background-size: 1666% 100%;
 }
@@ -1214,6 +1133,30 @@ watch(() => props.items, () => {
   inset: 0;
   background: radial-gradient(circle at center, transparent 0 10.8%, rgb(0 0 0 / 0.22) 11.6%, transparent 13.5%);
   pointer-events: none;
+}
+
+/* A record: the vinyl is the plate, the cover is printed on the label in the middle of it, and the
+   spindle is punched through both. The grooves are what keep a black disc from reading as a hole in
+   the floor. */
+.piece.is-vinyl .piece-cover {
+  border-radius: 50%;
+  background-color: rgb(13 13 15);
+  background-image:
+    repeating-radial-gradient(circle at center, transparent 0 1px, rgb(255 255 255 / 0.05) 1px 2px, transparent 2px 4px),
+    radial-gradient(circle at center, rgb(38 38 42), rgb(8 8 10) 72%);
+  -webkit-mask-image: radial-gradient(circle at center, transparent 0 2.6%, #000 3.4%);
+  mask-image: radial-gradient(circle at center, transparent 0 2.6%, #000 3.4%);
+}
+
+.piece.is-vinyl img {
+  /* the label. `inset` with `width: auto` does not stretch a replaced element — size it. */
+  position: absolute;
+  top: 33%;
+  left: 33%;
+  width: 34%;
+  height: 34%;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08);
 }
 
 .piece.is-held {
@@ -1281,7 +1224,7 @@ watch(() => props.items, () => {
 }
 
 /* A book's cover is paper too, so the slate behind a cover that has not loaded yet cannot stay
-   white in the dark. A cartridge's shell is its own colour, and a disc's cover has none. */
+   white in the dark. A disc's cover has none. */
 .dark .piece.is-book .piece-cover,
 .dark .piece.is-card .piece-cover {
   background-color: rgb(38 38 38);
