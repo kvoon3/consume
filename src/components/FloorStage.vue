@@ -74,6 +74,10 @@ const SHAPES: Record<SubjectType, Shape> = {
 // How much of its cell a piece fills: 0.84 is the share of the cell the disc's diameter has always
 // taken, so discs keep their exact size and everything else is cut to fit the same grid.
 const CELL_FILL = 0.84
+// And how much of the plane's height a piece may take. A shelf of seven lays its discs out on a
+// coarse grid, and without this each one comes out three times the size of a disc on a shelf of
+// seventy-nine. Books are cut from the grid alone: a book is a bigger object than a disc.
+const PIECE_CAP = 0.2
 
 interface Piece {
   body: Matter.Body
@@ -205,7 +209,9 @@ function relayout() {
   let margin = 0
   const sizes = pieces.map((piece) => {
     const box = footprint(piece.shape, piece.body.angle)
-    const w = Math.max(20, CELL_FILL * Math.min(cell.x / box.x, cell.y / box.y))
+    const fit = CELL_FILL * Math.min(cell.x / box.x, cell.y / box.y)
+    const cap = piece.shape.kind === 'book' ? Number.POSITIVE_INFINITY : PIECE_CAP * planeHeight
+    const w = Math.max(20, Math.min(fit, cap))
     margin = Math.max(margin, box.y * w / 2 + 6)
     return { h: w * piece.shape.ratio, t: w * piece.shape.thickness, w }
   })
@@ -1148,13 +1154,22 @@ watch(() => props.items, () => {
   mask-image: radial-gradient(circle at center, transparent 0 2.6%, #000 3.4%);
 }
 
+/* A record is round, so its shadow has to be round too: the base shadow would be cast by the square
+   element box, and its corners show ~15px of grey halo beside the disc. */
+.piece.is-vinyl {
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgb(0 0 0 / 0.22);
+}
+
 .piece.is-vinyl img {
-  /* the label. `inset` with `width: auto` does not stretch a replaced element — size it. */
+  /* the label: two thirds of the disc across, which is far bigger than a real record's, because a
+     third is not enough to see what the record is. `inset` with `width: auto` would not stretch a
+     replaced element, so the box is sized outright. */
   position: absolute;
-  top: 33%;
-  left: 33%;
-  width: 34%;
-  height: 34%;
+  top: 16.67%;
+  left: 16.67%;
+  width: 66.66%;
+  height: 66.66%;
   border-radius: 50%;
   box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08);
 }
