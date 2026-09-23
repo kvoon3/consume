@@ -53,12 +53,11 @@ const pickSound = defineSound({
   gain: 0.06,
 })
 
-// What each kind of thing looks like on the floor: a disc for the media that is one, a book, a
-// game case, or a square card. `ratio` is height over width, and `thickness` is how deep the box
-// is as a share of its width — a disc has no box at all, so it stays the flat plate it always
-// was.
+// What each kind of thing looks like on the floor: a disc for the media that is one, a book, a game
+// cartridge, or a square card. `ratio` is height over width, and `thickness` is how deep the box is
+// as a share of its width — a disc has no box at all, so it stays the flat plate it always was.
 interface Shape {
-  kind: 'book' | 'card' | 'case' | 'disc'
+  kind: 'book' | 'card' | 'cart' | 'disc'
   ratio: number
   thickness: number
 }
@@ -67,7 +66,7 @@ const SHAPES: Record<SubjectType, Shape> = {
   1: { kind: 'book', ratio: 1.42, thickness: 0.3 },
   2: { kind: 'disc', ratio: 1, thickness: 0 },
   3: { kind: 'disc', ratio: 1, thickness: 0 },
-  4: { kind: 'case', ratio: 1.35, thickness: 0.18 },
+  4: { kind: 'cart', ratio: 1.15, thickness: 0.3 },
   6: { kind: 'disc', ratio: 1, thickness: 0 },
   podcast: { kind: 'card', ratio: 1, thickness: 0.04 },
 }
@@ -975,7 +974,7 @@ watch(() => props.items, () => {
 
 .piece.is-book,
 .piece.is-card,
-.piece.is-case {
+.piece.is-cart {
   transform-style: preserve-3d;
 }
 
@@ -1058,31 +1057,65 @@ watch(() => props.items, () => {
   transform-origin: 0 50%;
 }
 
-/* A book's thickness is a page block, so the grain runs along it: down the two long faces, across
-   the two ends. */
+/* A book's thickness is a page block: paper, the grain of the pages running along it, and a fold
+   that darkens from the crease at the cover down to the cut edge. It has to be a good deal darker
+   than the floor or the depth of a lying book vanishes into it. (The far face is behind the cover
+   and the two ends are seen edge-on, so they share the near face's shading or wear the spine.) */
 .piece.is-book .piece-edge {
-  background-color: rgb(243 241 236);
-  background-image: repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.05) 2px 3px);
+  background-color: rgb(212 205 190);
+  background-image:
+    repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.07) 2px 3px),
+    linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.34));
 }
 
 .piece.is-book .piece-edge.is-left,
 .piece.is-book .piece-edge.is-right {
-  background-image: repeating-linear-gradient(to right, transparent 0 2px, rgb(0 0 0 / 0.05) 2px 3px);
+  background-image: repeating-linear-gradient(to right, transparent 0 2px, rgb(0 0 0 / 0.07) 2px 3px);
 }
 
-/* A case is dark plastic, and a card is barely thicker than its print. */
-.piece.is-case .piece-edge {
-  background-color: rgb(58 60 66);
+/* A cartridge: dark shell, the artwork printed on a label the shell frames, and a grip bitten out of
+   the top edge. The bite is only ever a shade of the shell, so it survives the dark theme, and it is
+   painted over the sheen — a recess cannot be glossier than the face around it. */
+.piece.is-cart .piece-edge {
+  background-color: rgb(52 54 60);
+  background-image: linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.5));
 }
 
+.piece.is-cart .piece-cover {
+  border-radius: 3px 3px 2px 2px;
+  background-color: rgb(52 54 60);
+}
+
+.piece.is-cart .piece-cover::after {
+  position: absolute;
+  top: 0;
+  left: 33%;
+  width: 34%;
+  height: 18%;
+  background-image:
+    radial-gradient(ellipse at 50% 100%, rgb(28 30 34) 0 66%, transparent 67%),
+    radial-gradient(ellipse at 50% 100%, rgb(255 255 255 / 0.22) 0 68%, transparent 69%);
+  content: '';
+}
+
+.piece.is-cart img {
+  position: absolute;
+  inset: 21% 7% 7%;
+  width: auto;
+  height: auto;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.45);
+}
+
+/* A card is barely thicker than its print. */
 .piece.is-card .piece-edge {
-  background-color: rgb(222 222 220);
+  background-color: rgb(208 208 206);
+  background-image: linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.3));
 }
 
 /* The spine wears the cover's own left edge, stretched down the thickness. It sets the image only,
    so the dark-mode colours below land on the same face without cleaving it off. */
-.piece.is-book .piece-edge.is-left.is-spine,
-.piece.is-case .piece-edge.is-left.is-spine {
+.piece.is-book .piece-edge.is-left.is-spine {
   background-image: var(--piece-cover, none);
   background-position: left center;
   background-repeat: no-repeat;
@@ -1181,11 +1214,15 @@ watch(() => props.items, () => {
 }
 
 .dark .piece.is-book .piece-edge {
-  background-color: rgb(58 57 54);
+  /* The page block is lighter than the floor in the dark, as it is darker than it in the light. */
+  background-color: rgb(74 72 68);
 }
 
-.dark .piece.is-case .piece-edge {
-  background-color: rgb(30 31 34);
+/* A book's cover is paper too, so the slate behind a cover that has not loaded yet cannot stay
+   white in the dark. A cartridge's shell is its own colour, and a disc's cover has none. */
+.dark .piece.is-book .piece-cover,
+.dark .piece.is-card .piece-cover {
+  background-color: rgb(38 38 38);
 }
 
 .dark .piece.is-card .piece-edge {
