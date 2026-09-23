@@ -1,6 +1,9 @@
 <script setup lang="ts" vapor>
 import { defineSound } from '@web-kits/audio'
+import { useIntervalFn } from '@vueuse/core'
+import { RefreshCw } from 'lucide'
 import Matter from 'matter-js'
+import { MorphIcon } from 'morphicons/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 
 import type { MediaItem, SubjectType } from '../composables/useBangumi'
@@ -19,6 +22,8 @@ const { t } = useLocale()
 const FLOOR = 0.15
 const RATIO = 0.6
 const LIMIT = 5
+// How long a line of tips stays before it is swapped for the next one.
+const TIP_HOLD = 7000
 
 interface Picks {
   considered: number
@@ -468,11 +473,14 @@ function reveal(result: Picks) {
 }
 
 // Ask Jev for the row. The second stage of it runs over a shortlist with summaries
-// (server/routes/api/pick.ts), which takes a few seconds, so the ask says what it is doing.
+// (server/routes/api/pick.ts), which takes a few seconds, so the ask says what it is doing — and
+// the field lets go of the sentence while it works, rather than leaving you staring at your own
+// words. A failure hands the sentence back; a pick keeps the field empty for the next one.
 async function submit() {
   const text = ask.value.trim()
   if (!text)
     return
+  ask.value = ''
   const key = `${props.subject}|${text}`
   const remembered = memo.get(key)
   if (remembered) {
@@ -501,6 +509,7 @@ async function submit() {
     if (local.signal.aborted)
       return
     console.error('[pick]', error)
+    ask.value = text
     askState.value = 'error'
   }
 }
@@ -509,6 +518,37 @@ async function submit() {
 function onAskInput() {
   if (askState.value === 'empty' || askState.value === 'error')
     askState.value = 'idle'
+}
+
+// A tip is an ask worth trying: put it in the field and run it.
+function tryTip(tip: string) {
+  ask.value = tip
+  void submit()
+}
+
+// The two lines of tips step one at a time, alternating, so a line changes every other tick and
+// the sentences walk past instead of a whole list being replaced. The top line takes the even
+// sentences and the bottom the odd ones, and each of them is on the clock's beat in turn.
+const tipStep = ref(0)
+const tips = computed(() => {
+  const all = t.value.pickTips
+  const half = Math.max(1, Math.ceil(all.length / 2))
+  const top = Math.floor(tipStep.value / 2) % half
+  const bottom = Math.floor((tipStep.value + 1) / 2) % half
+  return [all[top * 2] ?? all[0], all[bottom * 2 + 1] ?? all[1]]
+})
+
+// The field's placeholder is the same trick at a slower beat: the three jobs, in turn.
+const pickHint = computed(() => {
+  const hints = t.value.pickHints
+  return hints[Math.floor(tipStep.value / 2) % hints.length]
+})
+
+const { pause: holdTips, resume: turnTips } = useIntervalFn(moreTips, TIP_HOLD, { immediate: !reduced })
+
+// The same step the clock takes, on demand.
+function moreTips() {
+  tipStep.value++
 }
 
 // Transforms go straight to the DOM, so Vue re-renders never fight the physics.
@@ -758,29 +798,55 @@ watch(() => props.items, () => {
     @pointerup="onPointerUp"
     @transitionend="onTransitionEnd"
   >
-    <form
-      class="ask"
-      :class="{ 'is-error': askState === 'error' }"
-      @pointerdown.stop
-      @submit.prevent="submit"
-    >
-      <input
-        v-model="ask"
-        type="text"
-        enterkeyhint="go"
-        :placeholder="t.pick"
-        :aria-label="t.pick"
-        @input="onAskInput"
+    <div class="ask-wrap" @pointerdown.stop>
+      <form
+        class="ask"
+        :class="{ 'is-error': askState === 'error' }"
+        @submit.prevent="submit"
       >
-      <span
-        v-if="askStatus"
-        class="ask-state"
-        :class="{ 'is-thinking': askState === 'thinking' }"
-        aria-live="polite"
+        <span
+          v-if="askStatus"
+          class="ask-state"
+          :class="{ 'is-thinking': askState === 'thinking' }"
+          aria-live="polite"
+        >
+          {{ askStatus }}
+        </span>
+        <input
+          v-model="ask"
+          type="text"
+          enterkeyhint="go"
+          :placeholder="askStatus ? '' : pickHint"
+          :aria-label="t.pick"
+          @input="onAskInput"
+        >
+        <button type="button" class="ask-more" :aria-label="t.pickMore" :title="t.pickMore" @click="moreTips">
+          <MorphIcon :icon="RefreshCw" :size="13" />
+        </button>
+      </form>
+      <div
+        class="ask-tips"
+        @mouseenter="holdTips"
+        @mouseleave="turnTips"
+        @focusin="holdTips"
+        @focusout="turnTips"
       >
-        {{ askStatus }}
-      </span>
-    </form>
+        <div class="ask-line">
+          <Transition name="tips">
+            <button :key="tips[0]" type="button" class="ask-tip" @click="tryTip(tips[0])">
+              {{ tips[0] }}
+            </button>
+          </Transition>
+        </div>
+        <div class="ask-line">
+          <Transition name="tips">
+            <button :key="tips[1]" type="button" class="ask-tip" @click="tryTip(tips[1])">
+              {{ tips[1] }}
+            </button>
+          </Transition>
+        </div>
+      </div>
+    </div>
     <div class="world">
       <div class="floor" aria-hidden="true" />
       <button
@@ -864,22 +930,34 @@ watch(() => props.items, () => {
   pointer-events: none;
 }
 
-/* Sits in the air above the row, which hangs below the horizon and never reaches this far up. */
-.ask {
+/* Sits in the air above the row, which hangs below the horizon and never reaches this far up. Its
+   width is the field's, so everything under the field can start at the field's text. */
+.ask-wrap {
   position: absolute;
   top: 0.75rem;
   left: 50%;
   z-index: 6;
   display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: flex-start;
+  width: min(16rem, 60vw);
+  transform: translateX(-50%);
+}
+
+/* The field, with the swap button at its right end — the pill stays the width it was. */
+.ask {
+  display: flex;
   gap: 0.5rem;
   align-items: center;
   width: min(16rem, 60vw);
-  padding: 0.35rem 0.85rem;
+  /* Less on the right, because the button carries its own padding; and less above and below, because
+     the button is taller than the text it sits beside. */
+  padding: 0.2rem 0.5rem 0.2rem 0.85rem;
   border: 1px solid rgb(var(--border));
   border-radius: 999px;
   background: rgb(var(--background) / 0.72);
   box-shadow: 0 2px 10px rgb(0 0 0 / 0.08);
-  transform: translateX(-50%);
   transition: border-color 200ms ease;
   backdrop-filter: blur(8px);
 }
@@ -909,10 +987,11 @@ watch(() => props.items, () => {
   color: rgb(115 115 115);
 }
 
-/* What the last ask is doing: thinking, nothing found, or failed. */
+/* What the last ask is doing: thinking, nothing found, or failed. It sits at the field's left,
+   where the sentence it is working on used to be, and reads a shade stronger than the placeholder —
+   it is news, not a hint. */
 .ask-state {
-  flex-shrink: 0;
-  color: rgb(115 115 115);
+  color: rgb(64 64 64);
   font-size: 0.7rem;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -941,9 +1020,12 @@ watch(() => props.items, () => {
   border-color: rgb(212 212 212 / 0.5);
 }
 
-.dark .ask input::placeholder,
-.dark .ask-state {
+.dark .ask input::placeholder {
   color: rgb(163 163 163);
+}
+
+.dark .ask-state {
+  color: rgb(212 212 212);
 }
 
 .dark .ask.is-error {
@@ -952,6 +1034,108 @@ watch(() => props.items, () => {
 
 .dark .ask.is-error .ask-state {
   color: rgb(248 113 113);
+}
+
+/* The asks worth trying, under the field: one sentence per line, starting at the field's text. */
+.ask-tips {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  min-height: 2rem;
+  /* Line the sentences up with the input's *text*, not with the field's box: the field's border
+     and padding, less the chip's own, or the first character sits 8px left of the ask text. */
+  padding-left: calc(0.45rem + 1px);
+}
+
+/* One line of tips. The line on its way out leaves the flow while it fades, or it would sit under
+   the new sentence for the length of the fade. */
+.ask-line {
+  position: relative;
+  display: flex;
+}
+
+/* Bare text until it is pointed at: a pair of sentences in pill outlines reads heavier than the
+   field they sit under. */
+.ask-tip {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0.05rem 0.4rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: rgb(82 82 82);
+  font-size: 0.7rem;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.ask-tip:hover {
+  background: rgb(23 23 23 / 0.06);
+  color: rgb(23 23 23);
+}
+
+.ask-more {
+  display: flex;
+  flex-shrink: 0;
+  padding: 0.3rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: rgb(115 115 115);
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.ask-more:hover {
+  background: rgb(23 23 23 / 0.06);
+  color: rgb(23 23 23);
+}
+
+.dark .ask-tip,
+.dark .ask-more {
+  color: rgb(163 163 163);
+}
+
+.dark .ask-tip:hover,
+.dark .ask-more:hover {
+  background: rgb(255 255 255 / 0.08);
+  color: rgb(228 228 228);
+}
+
+/* Handing over, one line at a time, always the same way: the line that is going slides out to the
+   left, the one that arrives comes in from the right. Whichever line changes, it reads the same. */
+.tips-enter-active,
+.tips-leave-active {
+  transition: opacity 420ms cubic-bezier(0.22, 1, 0.36, 1), transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tips-leave-active {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.tips-enter-from {
+  opacity: 0;
+  transform: translateX(28px);
+}
+
+.tips-leave-to {
+  opacity: 0;
+  transform: translateX(-28px);
+}
+
+/* A stage this short has no room for two more lines above the row (see ROW_Y): the ask stays, the
+   tips go. 40rem of viewport is a 358px stage, where the row is already within a dozen pixels. */
+@media (max-height: 40rem) {
+  .ask-tips {
+    display: none;
+  }
 }
 
 .piece {
