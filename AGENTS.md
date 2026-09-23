@@ -30,46 +30,6 @@ pnpm lint
 pnpm build
 ```
 
-## The disc floor (`src/components/DiscStage.vue`)
-
-A pile of discs: `items` scattered on a real plane seen in perspective, hover to light a disc up
-and label it, press and hold to move one, click to lift it out of the pile into a centered row.
-matter-js 2D does the physics, laid on a plane tilted `rotateX(55deg)` about its near edge and sized
-so its far edge projects onto the horizon line — so the physics plane's `(x, y)` is the scene's
-`(x, z)`, and a later WebGL renderer could reuse the physics, hover, and drag logic unchanged.
-
-- Nothing on the floor follows the cursor: hover only highlights and labels. A disc moves when it is
-  grabbed (pointerdown) and stays where it is dropped; a click is anything under 5px of movement.
-- A clicked disc leaves the pile for the row: its body leaves the physics world (so the hole it left
-  stays a hole), it stands up (`rotateX(-55deg)`, which cancels the floor's tilt), it is lifted
-  `LIFT` toward the camera and raised `ROW_Y` up the stage. That lift scales the disc about the
-  perspective origin, so the row is laid out in *unlifted* screen space, at the one depth that
-  projects onto the stage's centre line; the raise is one `translateY` in the disc's own frame,
-  which the stand-up has already squared to the screen, so a pixel there is a pixel of rise. The
-  row has to clear the horizon (`HORIZON`), or the discs on the far floor read as one row with it.
-  Both states use one transform with the same function list, and only `.is-flying` transitions it —
-  that is what animates the disc standing up mid-flight, and a `transitionend` on the stage puts the
-  body back once a disc has landed on the floor again. Picking or dropping one disc shifts every
-  other slot, so a change gives *every* disc in the row `is-flying`: the row slides open and closed
-  instead of the discs round the changed one snapping into place.
-- The ask input floats over the top of the stage and submits on Enter. It posts the ask to
-  `/api/pick` (see below) and turns the probabilities into the row; the pill reports what the last
-  ask is doing (thinking, nothing found, failed) and clears that verdict as soon as the ask is
-  edited. Its `pointerdown` is stopped, or clicking into it to place the caret would grab a disc
-  underneath. Every disc's title pill is centred on its disc, and the ones in the row hang *below*
-  theirs: the air above the row is the ask input's.
-- Screen point -> floor point is solved in closed form, and the projection is the same one the
-  horizon uses. Two checks have caught every mistake here, so keep both when touching it: (a)
-  predict each disc's screen centre from its transform and compare with `getBoundingClientRect`
-  (agrees within ~3px over all 79), and (b) actually hover and drag with the pointer — a drifted
-  mapping fails loudly there. For the row, check a picked disc's box is square (upright), centred on
-  the stage's centre line, evenly spaced in pick order, and clear of the pile's own top edge —
-  `elementFromPoint` across each picked disc's box catches a floor disc painted over it.
-- The hub is a real punch-through: the mask lives on `.disc-face`, not on `.disc`, because a mask
-  clips to the border box and would erase the disc's shadow and ring as well.
-- Plain `.dark …` selectors only — this build drops `:global(...)` outright, which also silently
-  killed `CollectionTable`'s dark highlight rules.
-
 ## Pick (Jev, `server/routes/api/pick.ts`)
 
 The ask input submits `{ prompt, items }` to `POST /api/pick`; the server asks Jev (TypeSafe System
@@ -82,7 +42,7 @@ question or the `state` fields there and re-run the probe, or the measurement is
 request nobody sends. The criterion that makes the status condition work ("every condition the
 request states about watched-status or progress is satisfied") is what keeps "还没看过的" out of the
 在看 and 看过 shelves.
-- **The thresholds** live in `DiscStage.vue` (`FLOOR`, `RATIO`, `LIMIT`) and came out of the same
+- **The thresholds** live in `FloorStage.vue` (`FLOOR`, `RATIO`, `LIMIT`) and came out of the same
 probe: an absolute cutoff alone reports "nothing matches" for vague asks whose best answer only
 reaches ~0.4, so a pick must also stand up against the best one. A genuine no-match measures
 0.02–0.04, which is what the floor is for.

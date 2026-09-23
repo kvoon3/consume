@@ -79,7 +79,7 @@ export default defineCachedHandler(async (event) => {
         .filter(entry => entry.type === type)
         .sort((a, b) => (b.rate || 0) - (a.rate || 0) || b.updated_at.localeCompare(a.updated_at))
         .map(entry => ({
-          // `category`, `rating` and `summary` are the pick's business (src/components/DiscStage.vue
+          // `category`, `rating` and `summary` are the pick's business (src/components/FloorStage.vue
           // feeds them to Jev): the shelf the item sits on, the site's average score — not the
           // collection's own `score` — and the blurb.
           category: key,

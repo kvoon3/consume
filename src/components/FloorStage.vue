@@ -53,13 +53,39 @@ const pickSound = defineSound({
   gain: 0.06,
 })
 
+// What each kind of thing looks like on the floor: a disc for the media that is one, a book, a
+// game case, or a square card. `ratio` is height over width, and `thickness` is how deep the box
+// is as a share of its width — a disc has no box at all, so it stays the flat plate it always
+// was.
+interface Shape {
+  kind: 'book' | 'card' | 'case' | 'disc'
+  ratio: number
+  thickness: number
+}
+
+const SHAPES: Record<SubjectType, Shape> = {
+  1: { kind: 'book', ratio: 1.42, thickness: 0.3 },
+  2: { kind: 'disc', ratio: 1, thickness: 0 },
+  3: { kind: 'disc', ratio: 1, thickness: 0 },
+  4: { kind: 'case', ratio: 1.35, thickness: 0.18 },
+  6: { kind: 'disc', ratio: 1, thickness: 0 },
+  podcast: { kind: 'card', ratio: 1, thickness: 0.04 },
+}
+
+// How much of its cell a piece fills: 0.84 is the share of the cell the disc's diameter has always
+// taken, so discs keep their exact size and everything else is cut to fit the same grid.
+const CELL_FILL = 0.84
+
 interface Piece {
   body: Matter.Body
   el: HTMLElement
+  h: number
   home: { x: number, y: number }
   id: string
   item: MediaItem
-  spin: number
+  shape: Shape
+  t: number
+  w: number
 }
 
 // A floor of pieces, seen in perspective. matter-js keeps working in the plane's own
@@ -99,7 +125,6 @@ engine.enableSleeping = true
 let pieces: Piece[] = []
 let walls: Matter.Body[] = []
 let frame = 0
-let radius = 24
 let width = 0
 let height = 0
 let planeHeight = 0
@@ -123,6 +148,16 @@ function seed(value: string, salt: number) {
 
 function title(item: MediaItem) {
   return item.titleCn || item.title
+}
+
+// The footprint a shape covers on the floor once turned by `angle`: the bounding box of a rotated
+// rectangle, in units of the piece's width. A disc is a square that a rotation cannot grow.
+function footprint(shape: Shape, angle: number) {
+  if (shape.kind === 'disc')
+    return { x: 1, y: 1 }
+  const cos = Math.abs(Math.cos(angle))
+  const sin = Math.abs(Math.sin(angle))
+  return { x: cos + shape.ratio * sin, y: shape.ratio * cos + sin }
 }
 
 // Screen point (stage-relative) -> a point on the floor. Solving the perspective projection of
@@ -165,26 +200,50 @@ function relayout() {
   const columns = Math.max(1, Math.round(Math.sqrt(count * (width / planeHeight))))
   const rows = Math.ceil(count / columns)
   const cell = { x: width / columns, y: planeHeight / rows }
-  const next = Math.max(10, Math.min(cell.x, cell.y) * 0.42)
-  const scale = radius ? next / radius : 1
-  radius = next
-  el.style.setProperty('--piece-size', `${radius * 2}px`)
 
-  const margin = radius + 6
+  // Size every piece before placing any: a turned book or case covers more than its own width, and
+  // the margin all of them are kept away from the edge with has to clear the widest of them.
+  let margin = 0
+  const sizes = pieces.map((piece) => {
+    const box = footprint(piece.shape, piece.body.angle)
+    const w = Math.max(20, CELL_FILL * Math.min(cell.x / box.x, cell.y / box.y))
+    margin = Math.max(margin, box.y * w / 2 + 6)
+    return { h: w * piece.shape.ratio, t: w * piece.shape.thickness, w }
+  })
+
   const inner = { x: width - margin * 2, y: planeHeight - margin * 2 }
+  const resized: Piece[] = []
 
   pieces.forEach((piece, index) => {
     const column = index % columns
     const row = Math.floor(index / columns)
+    const size = sizes[index]
     piece.home = {
       x: margin + ((column + 0.5 + (seed(piece.id, 1) - 0.5) * 0.62) / columns) * inner.x,
       y: margin + ((row + 0.5 + (seed(piece.id, 2) - 0.5) * 0.62) / rows) * inner.y,
     }
-    if (scale !== 1)
-      Matter.Body.set(piece.body, 'circleRadius', radius)
-    Matter.Body.setPosition(piece.body, piece.home)
+    if (Math.abs(piece.w - size.w) > 0.5)
+      resized.push(piece)
+    else
+      Matter.Body.setPosition(piece.body, piece.home)
     Matter.Body.setVelocity(piece.body, { x: 0, y: 0 })
+    piece.h = size.h
+    piece.t = size.t
+    piece.w = size.w
+    piece.el.style.setProperty('--piece-h', `${piece.h.toFixed(2)}px`)
+    piece.el.style.setProperty('--piece-t', `${piece.t.toFixed(2)}px`)
+    piece.el.style.setProperty('--piece-w', `${piece.w.toFixed(2)}px`)
   })
+
+  for (const piece of resized)
+    replaceBody(piece, piece.home.x, piece.home.y)
+
+  // Let go of anything being dragged before its body is swapped out from under the constraint.
+  if (resized.length && dragConstraint) {
+    Matter.Composite.remove(engine.world, dragConstraint)
+    dragConstraint = undefined
+    heldId.value = undefined
+  }
 
   for (const wall of walls)
     Matter.Composite.remove(engine.world, wall)
@@ -197,6 +256,31 @@ function relayout() {
   Matter.Composite.add(engine.world, walls)
 
   sync()
+}
+
+// A piece's body is the box it is drawn as, so an angled book bumps like a book. Bodies are born
+// asleep: the pile stands still until something wakes it.
+function pieceBody(angle: number, w: number, h: number, x: number, y: number) {
+  const body = Matter.Bodies.rectangle(x, y, w, h, {
+    angle,
+    friction: 0.25,
+    frictionAir: 0.14,
+    restitution: 0.12,
+    sleepThreshold: 45,
+  })
+  Matter.Sleeping.set(body, true)
+  return body
+}
+
+// A body's vertices are the size it was built at, so a piece that changed size gets a new body.
+// (`Body.set(body, 'circleRadius')` was the old way to resize one, and it is a no-op.) A picked
+// piece has no body in the world at all — the row is off the floor — and stays that way.
+function replaceBody(piece: Piece, x: number, y: number) {
+  const onFloor = !picked.value.includes(piece.id)
+  Matter.Composite.remove(engine.world, piece.body)
+  piece.body = pieceBody(piece.body.angle, piece.w, piece.h, x, y)
+  if (onFloor)
+    Matter.Composite.add(engine.world, piece.body)
 }
 
 function build() {
@@ -213,15 +297,14 @@ function build() {
     if (!node)
       return
     const id = String(item.id)
-    const body = Matter.Bodies.circle(width / 2, planeHeight / 2, radius, {
-      friction: 0.25,
-      frictionAir: 0.14,
-      restitution: 0.12,
-      sleepThreshold: 45,
-    })
-    Matter.Sleeping.set(body, true)
+    const shape = SHAPES[item.subjectType]
+    if (shape.kind !== 'disc')
+      node.style.setProperty('--piece-cover', `url("${item.cover}")`)
+    // The pile's only randomness: a small in-plane angle, baked into the body so the physics turns
+    // with the piece. A placeholder body — relayout sizes and rebuilds every one before it is seen.
+    const body = pieceBody((seed(id, 3) - 0.5) * 14 * Math.PI / 180, 1, 1, width / 2, planeHeight / 2)
     Matter.Composite.add(engine.world, body)
-    pieces.push({ body, el: node, home: { x: width / 2, y: planeHeight / 2 }, id, item, spin: (seed(id, 3) - 0.5) * 14 })
+    pieces.push({ body, el: node, h: 0, home: { x: width / 2, y: planeHeight / 2 }, id, item, shape, t: 0, w: 0 })
   })
 
   relayout()
@@ -250,7 +333,10 @@ function rowPlan() {
   const scale = PERSPECTIVE / (PERSPECTIVE + depth * Math.sin(tilt))
   const grow = 1 / (1 - (LIFT * scale) / PERSPECTIVE)
   const lifted = scale * grow
-  const spread = Math.min(radius * lifted * 2.6, width / Math.max(1, picked.value.length))
+  // The widest piece in the row sets the step, so a row of discs keeps the spacing it always had
+  // and a row of books opens as wide as the books need.
+  const widest = picked.value.reduce((w, id) => Math.max(w, pieces.find(piece => piece.id === id)?.w ?? 0), 0)
+  const spread = Math.min(widest * lifted * 1.3, width / Math.max(1, picked.value.length))
   return {
     grow,
     dy: (ROW_Y * height - height / 2) / lifted,
@@ -270,14 +356,15 @@ function place(piece: Piece) {
   return { dy: plan.dy, grow: plan.grow, up: true, ...plan.slot(row) }
 }
 
-// Where a piece is drawn, in stage pixels: its centre, its on-screen radius, and whether it is
+// Where a piece is drawn, in stage pixels: its centre, its half-size on screen, and whether it is
 // standing in the row.
 function screenOf(piece: Piece) {
   const { dy, grow, up, x, y } = place(piece)
   const depth = planeHeight - y
   const scale = (PERSPECTIVE / (PERSPECTIVE + depth * Math.sin(tilt))) * grow
   return {
-    r: radius * scale,
+    hh: piece.h / 2 * scale,
+    hw: piece.w / 2 * scale,
     up,
     x: width / 2 + (x - width / 2) * scale,
     y: height / 2 + (height / 2 - depth * Math.cos(tilt) + dy) * scale,
@@ -285,14 +372,17 @@ function screenOf(piece: Piece) {
 }
 
 // One transform for both places a piece can be: on the floor, or standing in the row. The
-// function list is the same either way, so the browser has something to interpolate between,
-// and the spin is in-plane on the floor and on the piece's face once it has stood up. Hovering
-// never moves a piece, it only lights up; a grabbed one lifts a hair off the floor.
+// function list is the same either way, so the browser has something to interpolate between, and
+// the piece's own angle is the in-plane spin on the floor. Standing in the row, a box squares up
+// to the screen; a disc spins, it looks the same either way. Hovering never moves a piece, it only
+// lights up; a grabbed one lifts a hair off the floor. Lying down, the cover rides a thickness
+// above the floor, which is where the sides hanging off it end.
 function transform(piece: Piece, { dy, up, x, y }: ReturnType<typeof place>) {
   const held = heldId.value === piece.id
   const hover = hoverId.value === piece.id
-  return `translate3d(${(x - radius).toFixed(2)}px, ${(y - radius).toFixed(2)}px, ${up ? 0 : 2}px)`
-    + ` rotateX(${up ? -TILT_DEG : 0}deg) translateY(${dy.toFixed(2)}px) rotate(${piece.spin.toFixed(2)}deg)`
+  const spin = (up && piece.shape.kind !== 'disc' ? 0 : piece.body.angle * 180 / Math.PI).toFixed(2)
+  return `translate3d(${(x - piece.w / 2).toFixed(2)}px, ${(y - piece.h / 2).toFixed(2)}px, ${up ? 0 : 2 + piece.t}px)`
+    + ` rotateX(${up ? -TILT_DEG : 0}deg) translateY(${dy.toFixed(2)}px) rotate(${spin}deg)`
     + ` translateZ(${up ? LIFT : held ? 7 : 0}px) scale(${held ? 1.1 : hover ? 1.06 : 1})`
 }
 
@@ -421,7 +511,7 @@ function sync() {
   if (hovered.value && hud.value) {
     const piece = pieces.find(entry => entry.id === hoverId.value)
     if (piece) {
-      const { r, up, x: px, y: py } = screenOf(piece)
+      const { hh, up, x: px, y: py } = screenOf(piece)
       // The label is centred on its piece, so it needs its own width — which only changes when the
       // hovered piece does, so this stays off the per-frame path.
       if (hudId !== piece.id || !hudWidth) {
@@ -431,7 +521,7 @@ function sync() {
       const half = hudWidth / 2
       const x = Math.max(8 + half, Math.min(width - 8 - half, px - half))
       // Under a piece in the row: the air above it belongs to the ask.
-      const y = Math.max(4, Math.min(height - 24, up ? py + r + 8 : py - r - 34))
+      const y = Math.max(4, Math.min(height - 24, up ? py + hh + 8 : py - hh - 34))
       hud.value.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`
     }
   }
@@ -474,15 +564,44 @@ function engage(piece: Piece | undefined) {
   wake()
 }
 
+// Where a point in front of the floor sits on a piece's cover, which is drawn a thickness above it.
+// Both axes move — the height pulls a point away from the perspective origin on x and up the screen
+// on y — and solving the two projections for one screen point is what keeps the pointer on the piece
+// it is over. Without it only the bottom half of a book is grabbable, and its left edge picks
+// whatever is behind it.
+function onCover(point: { x: number, y: number }, piece: Piece) {
+  const z = 2 + piece.t
+  const oy = height / 2
+  const cos = Math.cos(tilt)
+  const sin = Math.sin(tilt)
+  const depth = planeHeight - point.y
+  const flat = PERSPECTIVE / (PERSPECTIVE + depth * sin)
+  // How far above the eye's line the cursor is on the floor plane, in screen pixels.
+  const ry = (oy - depth * cos) * flat
+  // The depth at which the same screen point sits on a cover `z` above the floor, then the rest of
+  // the inverse in that point's own scale.
+  const cover = (PERSPECTIVE * (oy - ry) + z * (ry * cos - PERSPECTIVE * sin)) / (PERSPECTIVE * cos + ry * sin)
+  const scale = PERSPECTIVE / (PERSPECTIVE + cover * sin - z * cos)
+  return { x: width / 2 + (point.x - width / 2) * flat / scale, y: planeHeight - cover }
+}
+
 function under(point: { x: number, y: number }) {
   let best: Piece | undefined
   let bestDistance = Number.POSITIVE_INFINITY
   for (const piece of pieces) {
     if (picked.value.includes(piece.id))
       continue
-    const { x, y } = piece.body.position
-    const distance = Math.hypot(x - point.x, y - point.y)
-    if (distance < radius * 1.3 && distance < bestDistance) {
+    const cover = onCover(point, piece)
+    const dx = cover.x - piece.body.position.x
+    const dy = cover.y - piece.body.position.y
+    // The point in the piece's own frame, then inside its box — a slightly tighter reach than the
+    // disc's old 1.3 × radius, since a half-size is what a box can measure itself by.
+    const cos = Math.cos(piece.body.angle)
+    const sin = Math.sin(piece.body.angle)
+    const distance = Math.hypot(dx, dy)
+    if (Math.abs(cos * dx + sin * dy) < piece.w * 0.575
+      && Math.abs(cos * dy - sin * dx) < piece.h * 0.575
+      && distance < bestDistance) {
       best = piece
       bestDistance = distance
     }
@@ -490,7 +609,8 @@ function under(point: { x: number, y: number }) {
   return best
 }
 
-// A piece in the row is off the floor, so it is hit in screen space instead.
+// A piece in the row is off the floor, so it is hit in screen space instead. Standing, its angle
+// is square to the screen, so its box is a plain rectangle there.
 function underRow(clientX: number, clientY: number) {
   const rect = stage.value!.getBoundingClientRect()
   const x = clientX - rect.left
@@ -499,7 +619,8 @@ function underRow(clientX: number, clientY: number) {
     if (!picked.value.includes(piece.id))
       return false
     const screen = screenOf(piece)
-    return Math.hypot(screen.x - x, screen.y - y) < Math.max(screen.r, 12)
+    return Math.abs(screen.x - x) < Math.max(screen.hw, 12)
+      && Math.abs(screen.y - y) < Math.max(screen.hh, 12)
   })
 }
 
@@ -508,7 +629,10 @@ function onPointerMove(event: PointerEvent) {
     return
   const point = toPlane(event.clientX, event.clientY)
   if (dragConstraint) {
-    dragConstraint.pointA = point
+    // The piece follows the point on its own cover under the cursor, which is where it was grabbed —
+    // dragging the floor point instead would pull a box up by a thickness the moment it is pressed.
+    const piece = pieces.find(entry => entry.id === heldId.value)
+    dragConstraint.pointA = piece ? onCover(point, piece) : point
     if (Math.hypot(point.x - pointerStart.x, point.y - pointerStart.y) > 5)
       dragged = true
     wake()
@@ -536,7 +660,7 @@ function onPointerDown(event: PointerEvent) {
     bodyB: piece.body,
     damping: 0.35,
     length: 0,
-    pointA: point,
+    pointA: onCover(point, piece),
     pointB: { x: 0, y: 0 },
     stiffness: 0.28,
   })
@@ -659,22 +783,31 @@ watch(() => props.items, () => {
         :key="item.id"
         type="button"
         class="piece"
-        :class="{
-          'is-held': heldId === String(item.id),
-          'is-hover': hoverId === String(item.id),
-          'is-picked': picked.includes(String(item.id)),
-          'is-flying': flying.has(String(item.id)),
-        }"
+        :class="[
+          `is-${SHAPES[item.subjectType].kind}`,
+          {
+            'is-held': heldId === String(item.id),
+            'is-hover': hoverId === String(item.id),
+            'is-picked': picked.includes(String(item.id)),
+            'is-flying': flying.has(String(item.id)),
+          },
+        ]"
         :data-piece="String(item.id)"
         :aria-label="title(item)"
         :aria-pressed="picked.includes(String(item.id))"
         @click="onClick($event, String(item.id))"
       >
-        <span class="piece-face">
+        <span class="piece-cover">
           <img :src="item.cover" alt="" draggable="false" loading="lazy" decoding="async">
           <span class="piece-sheen" aria-hidden="true" />
           <span class="piece-ring" aria-hidden="true" />
         </span>
+        <template v-if="SHAPES[item.subjectType].kind !== 'disc'">
+          <span class="piece-edge is-near" aria-hidden="true" />
+          <span class="piece-edge is-far" aria-hidden="true" />
+          <span class="piece-edge is-left is-spine" aria-hidden="true" />
+          <span class="piece-edge is-right" aria-hidden="true" />
+        </template>
       </button>
     </div>
 
@@ -820,15 +953,17 @@ watch(() => props.items, () => {
   position: absolute;
   top: 0;
   left: 0;
-  width: var(--piece-size, 3rem);
-  height: var(--piece-size, 3rem);
+  width: var(--piece-w, 3rem);
+  height: var(--piece-h, 3rem);
   padding: 0;
   border: 0;
-  border-radius: 50%;
-  overflow: hidden;
   background: none;
   cursor: pointer;
-  box-shadow: 0 2px 5px rgb(0 0 0 / 0.22);
+  /* Everything but a disc is a box: the cover is its near face and four sides hang off it into the
+     plane's depth, which is why nothing here may clip — an `overflow: hidden` would flatten the box
+     and cut its sides off. (Keeping the 3D is the one thing a disc must not do: flattened, it
+     renders exactly as it did before there were boxes.) */
+  box-shadow: 0 0 6px rgb(0 0 0 / 0.28);
   transform-origin: center;
   /* `--piece-fly` holds the flight's own easing: 0ms unless the piece is moving between the
      floor and the row. */
@@ -836,6 +971,21 @@ watch(() => props.items, () => {
   will-change: transform;
   -webkit-user-drag: none;
   user-select: none;
+}
+
+.piece.is-book,
+.piece.is-card,
+.piece.is-case {
+  transform-style: preserve-3d;
+}
+
+/* A disc is the flat plate it always was: round, the hub punched through, and a shadow that leans
+   away from the light because the disc never turns. It can keep the clip it always had, too — it has
+   no sides to flatten. */
+.piece.is-disc {
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgb(0 0 0 / 0.22);
 }
 
 .piece.is-flying {
@@ -846,11 +996,17 @@ watch(() => props.items, () => {
   box-shadow: 0 10px 20px rgb(0 0 0 / 0.28);
 }
 
-.piece-face {
+.piece-cover {
   position: absolute;
   inset: 0;
   overflow: hidden;
+  border-radius: 2px;
+  background: rgb(245 245 244);
+}
+
+.piece.is-disc .piece-cover {
   border-radius: 50%;
+  background: none;
   /* The hub is punched through, so whatever lies under the piece shows in the hole.
      The mask sits here, not on .piece: a mask clips to the border box, so hoisting it
      would also erase the piece's shadow and its ring. */
@@ -858,12 +1014,91 @@ watch(() => props.items, () => {
   mask-image: radial-gradient(circle at center, transparent 0 10.5%, #000 11.5%);
 }
 
+/* The four sides of a box: each is hinged on one of the cover's edges and folded back by one
+   thickness into the plane's depth. They are one-sided — the inside of a box is never on screen —
+   and `backface-visibility` is what leaves it out. */
+.piece-edge {
+  position: absolute;
+  backface-visibility: hidden;
+}
+
+.piece-edge.is-near {
+  top: 100%;
+  left: 0;
+  width: var(--piece-w);
+  height: var(--piece-t);
+  transform: rotateX(-90deg);
+  transform-origin: 50% 0;
+}
+
+.piece-edge.is-far {
+  bottom: 100%;
+  left: 0;
+  width: var(--piece-w);
+  height: var(--piece-t);
+  transform: rotateX(90deg);
+  transform-origin: 50% 100%;
+}
+
+.piece-edge.is-left {
+  top: 0;
+  right: 100%;
+  width: var(--piece-t);
+  height: var(--piece-h);
+  transform: rotateY(-90deg);
+  transform-origin: 100% 50%;
+}
+
+.piece-edge.is-right {
+  top: 0;
+  left: 100%;
+  width: var(--piece-t);
+  height: var(--piece-h);
+  transform: rotateY(90deg);
+  transform-origin: 0 50%;
+}
+
+/* A book's thickness is a page block, so the grain runs along it: down the two long faces, across
+   the two ends. */
+.piece.is-book .piece-edge {
+  background-color: rgb(243 241 236);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.05) 2px 3px);
+}
+
+.piece.is-book .piece-edge.is-left,
+.piece.is-book .piece-edge.is-right {
+  background-image: repeating-linear-gradient(to right, transparent 0 2px, rgb(0 0 0 / 0.05) 2px 3px);
+}
+
+/* A case is dark plastic, and a card is barely thicker than its print. */
+.piece.is-case .piece-edge {
+  background-color: rgb(58 60 66);
+}
+
+.piece.is-card .piece-edge {
+  background-color: rgb(222 222 220);
+}
+
+/* The spine wears the cover's own left edge, stretched down the thickness. It sets the image only,
+   so the dark-mode colours below land on the same face without cleaving it off. */
+.piece.is-book .piece-edge.is-left.is-spine,
+.piece.is-case .piece-edge.is-left.is-spine {
+  background-image: var(--piece-cover, none);
+  background-position: left center;
+  background-repeat: no-repeat;
+  background-size: 1666% 100%;
+}
+
 .piece img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform: scale(1.12);
   pointer-events: none;
+}
+
+/* A disc's label is a print on the plate, a hair wider than the rim it sits inside. */
+.piece.is-disc img {
+  transform: scale(1.12);
 }
 
 .piece-sheen {
@@ -874,7 +1109,7 @@ watch(() => props.items, () => {
 }
 
 /* Rim around the punch: without it a hole in a white floor reads as a white dot. */
-.piece-ring {
+.piece.is-disc .piece-ring {
   position: absolute;
   inset: 0;
   background: radial-gradient(circle at center, transparent 0 10.8%, rgb(0 0 0 / 0.22) 11.6%, transparent 13.5%);
@@ -945,7 +1180,19 @@ watch(() => props.items, () => {
   box-shadow: inset 0 12px 18px rgb(0 0 0 / 0.45);
 }
 
-.dark .piece-ring {
+.dark .piece.is-book .piece-edge {
+  background-color: rgb(58 57 54);
+}
+
+.dark .piece.is-case .piece-edge {
+  background-color: rgb(30 31 34);
+}
+
+.dark .piece.is-card .piece-edge {
+  background-color: rgb(70 70 70);
+}
+
+.dark .piece.is-disc .piece-ring {
   background: radial-gradient(circle at center, transparent 0 10.8%, rgb(255 255 255 / 0.16) 11.6%, transparent 13.5%);
 }
 

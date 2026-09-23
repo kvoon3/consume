@@ -7,7 +7,7 @@
 //
 // The client sends the items it is displaying, so what the user sees is exactly what Jev
 // judged. The request shape lives in server/utils/jev.ts; how the probabilities become a row
-// of discs belongs to the client (src/components/DiscStage.vue).
+// of discs belongs to the client (src/components/FloorStage.vue).
 import { createError, defineEventHandler } from 'nitro/h3'
 
 import type { JevItem } from '../../utils/jev'
