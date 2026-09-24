@@ -1002,6 +1002,10 @@ watch(() => props.items, () => {
 .floor {
   position: absolute;
   inset: 0;
+  /* The table's own corners are round: a radius here is a circle in the plane, so the projection
+     lays it down with everything else — the near pair is under the stage's own rounded clip, and
+     the far pair is the one actually seen, up at the horizon. */
+  border-radius: 2rem;
   background:
     repeating-linear-gradient(0deg, transparent 0 3px, rgb(23 23 23 / 0.03) 3px 4px),
     repeating-linear-gradient(90deg, transparent 0 79px, rgb(23 23 23 / 0.035) 79px 80px),
@@ -1533,11 +1537,11 @@ watch(() => props.items, () => {
 
 .dark .floor {
   background:
-    repeating-linear-gradient(0deg, transparent 0 3px, rgb(255 255 255 / 0.025) 3px 4px),
-    repeating-linear-gradient(90deg, transparent 0 79px, rgb(255 255 255 / 0.03) 79px 80px),
-    repeating-linear-gradient(0deg, transparent 0 79px, rgb(255 255 255 / 0.03) 79px 80px),
-    linear-gradient(to bottom, rgb(24 24 24), rgb(17 17 17) 60%, rgb(12 12 12));
-  box-shadow: inset 0 12px 18px rgb(0 0 0 / 0.45);
+    repeating-linear-gradient(0deg, transparent 0 3px, rgb(255 255 255 / 0.035) 3px 4px),
+    repeating-linear-gradient(90deg, transparent 0 79px, rgb(255 255 255 / 0.05) 79px 80px),
+    repeating-linear-gradient(0deg, transparent 0 79px, rgb(255 255 255 / 0.05) 79px 80px),
+    linear-gradient(to bottom, rgb(41 41 41), rgb(32 32 32) 60%, rgb(25 25 25));
+  box-shadow: inset 0 12px 18px rgb(0 0 0 / 0.35);
 }
 
 /* A book's cover is paper too, so the slate behind a cover that has not loaded yet cannot stay
