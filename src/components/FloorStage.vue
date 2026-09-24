@@ -1,7 +1,7 @@
 <script setup lang="ts" vapor>
 import { defineSound } from '@web-kits/audio'
 import { useIntervalFn } from '@vueuse/core'
-import { RefreshCw } from 'lucide'
+import { RefreshCw, X } from 'lucide'
 import Matter from 'matter-js'
 import { MorphIcon } from 'morphicons/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
@@ -519,14 +519,13 @@ function reveal(result: Picks) {
 }
 
 // Ask Jev for the row. The second stage of it runs over a shortlist with summaries
-// (server/routes/api/pick.ts), which takes a few seconds, so the ask says what it is doing — and
-// the field lets go of the sentence while it works, rather than leaving you staring at your own
-// words. A failure hands the sentence back; a pick keeps the field empty for the next one.
+// (server/routes/api/pick.ts), which takes a few seconds, so the ask says what it is doing — the
+// sentence stays in the field, where it can be read and edited while it works, and where the
+// answer it produced can still be seen against it (the x in the pill is what lets go of it).
 async function submit() {
   const text = ask.value.trim()
   if (!text)
     return
-  ask.value = ''
   const key = `${props.subject}|${text}`
   const remembered = memo.get(key)
   if (remembered) {
@@ -534,6 +533,8 @@ async function submit() {
     return
   }
 
+  // The tips are about to be swapped for the field's progress; nothing is pointing at them any more.
+  turnTips()
   controller?.abort()
   const local = new AbortController()
   controller = local
@@ -555,9 +556,17 @@ async function submit() {
     if (local.signal.aborted)
       return
     console.error('[pick]', error)
-    ask.value = text
     askState.value = 'error'
   }
+}
+
+// The x in the pill: the question goes, and so does the answer it put on the floor — an empty field
+// over a standing row would be a verdict with nothing to tie it to.
+function clearAsk() {
+  controller?.abort()
+  ask.value = ''
+  askState.value = 'idle'
+  void setRow([])
 }
 
 // A verdict belongs to the ask it was made for.
@@ -577,16 +586,17 @@ function tryTip(tip: string) {
 // sentences and the bottom the odd ones, and each of them is on the clock's beat in turn.
 const tipStep = ref(0)
 const tips = computed(() => {
-  const all = t.value.pickTips
+  const all = t.value.pickTips[props.subject]
   const half = Math.max(1, Math.ceil(all.length / 2))
   const top = Math.floor(tipStep.value / 2) % half
   const bottom = Math.floor((tipStep.value + 1) / 2) % half
   return [all[top * 2] ?? all[0], all[bottom * 2 + 1] ?? all[1]]
 })
 
-// The field's placeholder is the same trick at a slower beat: the three jobs, in turn.
+// The field's placeholder is the same trick at a slower beat: the three jobs, in turn, in the words
+// of the shelf being asked about (asks about a book are read, not watched).
 const pickHint = computed(() => {
-  const hints = t.value.pickHints
+  const hints = t.value.pickHints[props.subject]
   return hints[Math.floor(tipStep.value / 2) % hints.length]
 })
 
@@ -826,6 +836,8 @@ onBeforeUnmount(() => {
 
 watch(() => props.items, () => {
   controller?.abort()
+  // A new floor is a new question: the ask that went with the last pile does not carry over.
+  ask.value = ''
   askState.value = 'idle'
   clearWorld()
   build()
@@ -845,32 +857,55 @@ watch(() => props.items, () => {
     @transitionend="onTransitionEnd"
   >
     <div class="ask-wrap" @pointerdown.stop>
-      <form
-        class="ask"
-        :class="{ 'is-error': askState === 'error' }"
-        @submit.prevent="submit"
-      >
-        <span
-          v-if="askStatus"
-          class="ask-state"
-          :class="{ 'is-thinking': askState === 'thinking' }"
-          aria-live="polite"
+      <div class="ask-row">
+        <form
+          class="ask"
+          :class="{ 'is-error': askState === 'error' }"
+          @submit.prevent="submit"
         >
-          {{ askStatus }}
-        </span>
-        <input
-          v-model="ask"
-          type="text"
-          enterkeyhint="go"
-          :placeholder="askStatus ? '' : pickHint"
-          :aria-label="t.pick"
-          @input="onAskInput"
+          <input
+            v-model="ask"
+            type="text"
+            enterkeyhint="go"
+            :placeholder="pickHint"
+            :aria-label="t.pick"
+            @input="onAskInput"
+          >
+          <!-- Inside the pill, where the sentence it clears is: emptied by hand, not by the pick. -->
+          <button
+            v-if="ask"
+            type="button"
+            class="ask-ico ask-clear"
+            :aria-label="t.pickClear"
+            :title="t.pickClear"
+            @click="clearAsk"
+          >
+            <MorphIcon :icon="X" :size="13" />
+          </button>
+        </form>
+        <button
+          type="button"
+          class="ask-ico ask-more"
+          :aria-label="t.pickMore"
+          :title="t.pickMore"
+          @click="moreTips"
         >
-        <button type="button" class="ask-more" :aria-label="t.pickMore" :title="t.pickMore" @click="moreTips">
           <MorphIcon :icon="RefreshCw" :size="13" />
         </button>
-      </form>
+      </div>
+      <!-- What became of the last ask, under the field: the sentence it is about is still in there. -->
+      <p
+        v-if="askStatus"
+        class="ask-state"
+        :class="{ 'is-error': askState === 'error', 'is-thinking': askState === 'thinking' }"
+        aria-live="polite"
+      >
+        {{ askStatus }}
+      </p>
+      <!-- Nothing to suggest while the field is out being answered; a verdict, though, is worth
+           retrying against, so the tips come back with it. -->
       <div
+        v-if="askState !== 'thinking'"
         class="ask-tips"
         @mouseenter="holdTips"
         @mouseleave="turnTips"
@@ -987,19 +1022,31 @@ watch(() => props.items, () => {
   flex-direction: column;
   gap: 0.4rem;
   align-items: flex-start;
-  width: min(16rem, 60vw);
+  width: min(17.5rem, 64vw);
   transform: translateX(-50%);
 }
 
-/* The field, with the swap button at its right end — the pill stays the width it was. */
+/* The field, and the swap button outside it on the right — the row carries the full width, and the
+   pill takes what is left of it. */
+.ask-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  width: 100%;
+}
+
 .ask {
   display: flex;
-  gap: 0.5rem;
+  flex: 1;
+  gap: 0.2rem;
   align-items: center;
-  width: min(16rem, 60vw);
-  /* Less on the right, because the button carries its own padding; and less above and below, because
-     the button is taller than the text it sits beside. */
-  padding: 0.2rem 0.5rem 0.2rem 0.85rem;
+  /* One height, button or no button: the clear button is taller than the text it sits beside, and
+     left to size itself the pill would grow by its own controls. */
+  height: 1.8rem;
+  min-width: 0;
+  /* Nothing above or below, now that the height is fixed; less on the right, because the clear
+     button carries its own box. */
+  padding: 0 0.5rem 0 0.85rem;
   border: 1px solid rgb(var(--border));
   border-radius: 999px;
   background: rgb(var(--background) / 0.72);
@@ -1033,17 +1080,20 @@ watch(() => props.items, () => {
   color: rgb(115 115 115);
 }
 
-/* What the last ask is doing: thinking, nothing found, or failed. It sits at the field's left,
-   where the sentence it is working on used to be, and reads a shade stronger than the placeholder —
-   it is news, not a hint. */
+/* What the last ask is doing: thinking, nothing found, or failed. It reads under the pill and in the
+   text's column, because the sentence it is about is still up in the field — it is news, not a hint.
+   (No chip of its own, so it takes the tips' offset plus the chip padding they carry.) */
 .ask-state {
+  margin: 0;
+  padding-left: calc(0.85rem + 1px);
   color: rgb(64 64 64);
   font-size: 0.7rem;
+  line-height: 1.2;
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
 
-.ask.is-error .ask-state {
+.ask-state.is-error {
   color: rgb(220 38 38);
 }
 
@@ -1078,7 +1128,7 @@ watch(() => props.items, () => {
   border-color: rgb(248 113 113 / 0.6);
 }
 
-.dark .ask.is-error .ask-state {
+.dark .ask-state.is-error {
   color: rgb(248 113 113);
 }
 
@@ -1125,10 +1175,25 @@ watch(() => props.items, () => {
   color: rgb(23 23 23);
 }
 
-.ask-more {
+.dark .ask-tip {
+  color: rgb(163 163 163);
+}
+
+.dark .ask-tip:hover {
+  background: rgb(255 255 255 / 0.08);
+  color: rgb(228 228 228);
+}
+
+/* Both round buttons: the x, which sits in the pill at the end of the sentence it clears, and the
+   swap, which sits beside the pill. Squares, so neither an icon nor the absence of one sizes them. */
+.ask-ico {
   display: flex;
-  flex-shrink: 0;
-  padding: 0.3rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
   border: 0;
   border-radius: 999px;
   background: none;
@@ -1137,18 +1202,27 @@ watch(() => props.items, () => {
   transition: background-color 150ms ease, color 150ms ease;
 }
 
-.ask-more:hover {
+.ask-ico:hover {
   background: rgb(23 23 23 / 0.06);
   color: rgb(23 23 23);
 }
 
-.dark .ask-tip,
-.dark .ask-more {
+/* Off the pill, so it wears the pill's own material to sit on the stage beside it — and it stands
+   the pill's height, being the pill's sibling. */
+.ask-more {
+  width: 1.8rem;
+  height: 1.8rem;
+  border: 1px solid rgb(var(--border));
+  background: rgb(var(--background) / 0.72);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.08);
+  backdrop-filter: blur(8px);
+}
+
+.dark .ask-ico {
   color: rgb(163 163 163);
 }
 
-.dark .ask-tip:hover,
-.dark .ask-more:hover {
+.dark .ask-ico:hover {
   background: rgb(255 255 255 / 0.08);
   color: rgb(228 228 228);
 }
