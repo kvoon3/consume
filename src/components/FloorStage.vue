@@ -318,6 +318,47 @@ function build() {
   })
 
   relayout()
+  dropIn()
+}
+
+// How the pile arrives: poured from one point above the top of the stage, over the middle of
+// the table — the way a handful of things let go from one place over a floor scatters. Every
+// piece leaves the same spot and travels outward to the cell the grid laid for it, turning as
+// it comes; the pour point is the plane point that projects just past the stage's top edge, so
+// nothing is ever seen waiting in the sky: a piece enters already moving and fully opaque —
+// opacity under 1 flattens a preserve-3d box (a book's sides ride flat in its cover, and the
+// book crosses the whole top of the stage with no thickness), so there is no fade in the pour
+// at all. A book is a third as tall as its cell, so it still clears the edge once it has
+// fallen that far; and because the world is drawn in perspective, the flight reads the way a
+// falling thing does — small where it is let go, growing as it nears its place. The scatter is
+// a fan: pieces with further to go move faster, as things thrown from one place do. The stagger
+// is in the release, never the speed — one flight, 1300ms of it, eased out so every piece
+// leaves the pour point already moving and lands soft. Reduced motion keeps the arrival but
+// not the pour: pieces fade in where they lie (a fade never has thickness to show).
+function dropIn() {
+  // Just off the top edge, centred: the pour point every flight starts from.
+  const { y } = planeFromScreen(width / 2, -height * 0.06)
+  for (const piece of pieces) {
+    if (reduced) {
+      piece.el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 240, easing: 'ease-out' })
+      continue
+    }
+    const fall = seed(piece.id, 5)
+    const spin = piece.body.angle * 180 / Math.PI + (seed(piece.id, 6) - 0.5) * 220
+    const pour = { dy: 0, up: false, x: width / 2, y }
+    piece.el.animate(
+      [
+        { transform: transform(piece, pour, spin) },
+        { transform: transform(piece, place(piece)) },
+      ],
+      {
+        delay: Math.round(fall * 850),
+        duration: 1300,
+        easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+        fill: 'backwards',
+      },
+    )
+  }
 }
 
 function clearWorld() {
@@ -386,11 +427,16 @@ function screenOf(piece: Piece) {
 // the piece's own angle is the in-plane spin on the floor. Standing in the row, a box squares up
 // to the screen; a disc spins, it looks the same either way. Hovering never moves a piece, it only
 // lights up; a grabbed one lifts a hair off the floor. Lying down, the cover rides a thickness
-// above the floor, which is where the sides hanging off it end.
-function transform(piece: Piece, { dy, up, x, y }: ReturnType<typeof place>) {
+// above the floor, which is where the sides hanging off it end. A pour passes its own starting
+// spin so the piece can arrive turning (see `dropIn`).
+function transform(
+  piece: Piece,
+  { dy, up, x, y }: { dy: number, up: boolean, x: number, y: number },
+  spinDeg?: number,
+) {
   const held = heldId.value === piece.id
   const hover = hoverId.value === piece.id
-  const spin = (up && piece.shape.kind !== 'disc' ? 0 : piece.body.angle * 180 / Math.PI).toFixed(2)
+  const spin = (spinDeg ?? (up && piece.shape.kind !== 'disc' ? 0 : piece.body.angle * 180 / Math.PI)).toFixed(2)
   return `translate3d(${(x - piece.w / 2).toFixed(2)}px, ${(y - piece.h / 2).toFixed(2)}px, ${up ? 0 : 2 + piece.t}px)`
     + ` rotateX(${up ? -TILT_DEG : 0}deg) translateY(${dy.toFixed(2)}px) rotate(${spin}deg)`
     + ` translateZ(${up ? LIFT : held ? 7 : 0}px) scale(${held ? 1.1 : hover ? 1.06 : 1})`
